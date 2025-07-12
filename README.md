@@ -36,13 +36,6 @@ setup_env.bat
 ```
 
 ### 3. Build the Project
-
-#### Option A: Using Batch Script
-```cmd
-build_debug.bat
-```
-
-#### Option B: Using Visual Studio
 1. Open `ContourSegment.sln` in Visual Studio
 2. Select `Debug` configuration and `x64` platform
 3. Build the solution (Ctrl+Shift+B)
@@ -86,7 +79,6 @@ ContourSegment/
 ├── forms/            # Qt UI forms
 ├── docs/             # Documentation
 ├── tests/            # Unit tests
-└── build_*.bat       # Build scripts
 ```
 
 ## Building from Source
@@ -99,24 +91,9 @@ ContourSegment/
 
 ### Build Steps
 
-1. **Setup environment**:
+**Setup environment**:
    ```cmd
    setup_env.bat
-   ```
-
-2. **Build Debug version**:
-   ```cmd
-   build_debug.bat
-   ```
-
-3. **Build Release version**:
-   ```cmd
-   build.bat
-   ```
-
-4. **Clean build files**:
-   ```cmd
-   clean.bat
    ```
 
 ## Troubleshooting
@@ -138,7 +115,6 @@ ContourSegment/
 ### Getting Help
 
 - Check the `docs/` directory for detailed documentation
-- Run `troubleshoot.bat` for diagnostic information
 - Review build logs for specific error messages
 
 ## Development
