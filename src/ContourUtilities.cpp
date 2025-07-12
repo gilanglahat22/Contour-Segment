@@ -2,8 +2,11 @@
 #include <stdexcept>
 #include <algorithm>
 #include <cmath>
-#include <span>
+
 #include <cstdlib>
+#include <vector>
+
+using namespace std;
 
 namespace contour::utilities
 {
@@ -38,10 +41,7 @@ namespace contour::utilities
         return contour;
     }
 
-    Contour createPolylineContour(std::span<const geometry::Point2D> points)
-    {
-        return createPolylineContour(std::vector<geometry::Point2D>(points.begin(), points.end()));
-    }
+
 
     Contour createPolylineContour(const geometry::Point2D* points, size_t count)
     {

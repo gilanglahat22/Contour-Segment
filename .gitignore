@@ -473,5 +473,4 @@ ContourSegment/
 # *.bat
 
 # Large files that should be generated
-# Uncomment if these files are too large for git
-ContourSegment.vcxproj 
+# Uncomment if these files are too large for git 

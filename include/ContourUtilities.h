@@ -3,7 +3,6 @@
 #include "Contour.h"
 #include "Geometry.h"
 #include <vector>
-#include <span>
 #include <initializer_list>
 
 namespace contour
@@ -17,7 +16,6 @@ namespace contour
         // Overloads for different input types
         Contour createPolylineContour(std::initializer_list<geometry::Point2D> points);
         Contour createPolylineContour(const std::vector<geometry::Point2D>& points);
-        Contour createPolylineContour(std::span<const geometry::Point2D> points);
         
         // C-style array support
         Contour createPolylineContour(const geometry::Point2D* points, size_t count);
