@@ -23,9 +23,6 @@ setup_env.bat
 
 # Build the project
 build.bat
-
-# Run tests
-test.bat
 ```
 
 ## Development Workflow

@@ -106,7 +106,7 @@ ContourSegment/
 
 2. **"Qt libraries not found"**
    - Verify Qt installation path
-   - Check that MSVC 2019 64-bit components are installed
+   - Check that MSVC 2019 or latest 64-bit components are installed
 
 3. **Build errors**
    - Ensure Visual Studio C++ tools are installed
