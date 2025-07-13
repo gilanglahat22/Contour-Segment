@@ -153,3 +153,36 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Grid system with snap-to-grid
 - Zoom and pan navigation
 - Modern Qt6-based GUI 
+
+## Running Unit Tests
+
+### Build and Run on Linux/Mac (g++)
+```sh
+# Build
+ g++ -std=c++17 -Iinclude -o ContourTests \
+   tests/ContourTests.cpp \
+   src/Contour.cpp \
+   src/Segment.cpp \
+   src/Geometry.cpp \
+   src/ContourUtilities.cpp \
+   src/ContourVisualizer.cpp
+# Run
+./ContourTests
+```
+
+### Build and Run on Windows (MSVC/Visual Studio Command Prompt)
+```bat
+REM Build
+cl /EHsc /Iinclude tests\ContourTests.cpp src\Contour.cpp src\Segment.cpp src\Geometry.cpp src\ContourUtilities.cpp src\ContourVisualizer.cpp
+REM Run
+ContourTests.exe
+```
+
+If the test passes, you will see green output:
+```
+Async valid/invalid contour search test PASSED
+```
+If the test fails, you will see red output:
+```
+Async valid/invalid contour search test FAILED
+``` 

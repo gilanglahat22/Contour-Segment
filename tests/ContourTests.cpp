@@ -425,3 +425,62 @@ extern "C" void runContourTests()
 {
     runAllTests();
 } 
+
+// Helper: async search valid/invalid
+std::vector<const Contour*> asyncSearch(const std::vector<Contour>& contours, bool valid) {
+    std::vector<const Contour*> result;
+    for (const auto& c : contours) {
+        if (c.isValid() == valid) result.push_back(&c);
+    }
+    return result;
+}
+
+void test_async_valid_invalid_search() {
+    // a. Construct 4 contours
+    std::vector<Contour> contours;
+    // Valid polyline
+    contours.push_back(contour::makePolylineContour({{0,0},{1,0},{1,1}}));
+    // Valid closed
+    contours.push_back(contour::makePolylineContour({{0,0},{1,0},{1,1},{0,0}}));
+    // Invalid: disconnected
+    Contour invalid1;
+    invalid1.addSegment(contour::createLineSegment({0,0},{1,0}));
+    invalid1.addSegment(contour::createLineSegment({2,2},{3,3}));
+    contours.push_back(invalid1);
+    // Invalid: single point (empty contour)
+    Contour invalid2;
+    contours.push_back(invalid2);
+
+    // b. Async search valid
+    auto fut_valid = std::async(std::launch::async, asyncSearch, std::cref(contours), true);
+    // c. Async search invalid
+    auto fut_invalid = std::async(std::launch::async, asyncSearch, std::cref(contours), false);
+    // d. Get results
+    auto valid_ptrs = fut_valid.get();
+    auto invalid_ptrs = fut_invalid.get();
+
+    // e. Validate: unik, gabungan = semua
+    std::set<const Contour*> all;
+    for (auto p : valid_ptrs) all.insert(p);
+    for (auto p : invalid_ptrs) all.insert(p);
+    bool ok = true;
+    if (all.size() != contours.size()) ok = false;
+    std::set<const Contour*> valid_set(valid_ptrs.begin(), valid_ptrs.end());
+    std::set<const Contour*> invalid_set(invalid_ptrs.begin(), invalid_ptrs.end());
+    for (auto p : valid_ptrs) if (invalid_set.count(p) != 0) ok = false;
+    for (auto p : invalid_ptrs) if (valid_set.count(p) != 0) ok = false;
+    if (ok) {
+        // Hijau: \033[32m, Reset: \033[0m
+        std::cout << "\033[32mAsync valid/invalid contour search test PASSED\033[0m\n";
+    } else {
+        // Merah: \033[31m
+        std::cout << "\033[31mAsync valid/invalid contour search test FAILED\033[0m\n";
+        exit(1);
+    }
+}
+
+int main() {
+    runAllTests();
+    test_async_valid_invalid_search();
+    return 0;
+} 
