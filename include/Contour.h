@@ -34,6 +34,7 @@ namespace contour
         void addSegment(std::unique_ptr<Segment> segment);
         void insertSegment(size_type index, std::unique_ptr<Segment> segment);
         void removeSegment(size_type index);
+        void replaceSegment(size_type index, std::unique_ptr<Segment> segment);
         void clear();
 
         // Access methods

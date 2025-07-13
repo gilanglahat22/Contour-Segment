@@ -63,6 +63,20 @@ namespace contour
         invalidateCache();
     }
 
+    void Contour::replaceSegment(size_type index, std::unique_ptr<Segment> segment)
+    {
+        if (!segment)
+        {
+            throw std::invalid_argument("Contour::replaceSegment: segment cannot be null");
+        }
+        if (index >= m_segments.size())
+        {
+            throw std::out_of_range("Contour::replaceSegment: index out of range");
+        }
+        m_segments[index] = std::move(segment);
+        invalidateCache();
+    }
+
     void Contour::clear()
     {
         m_segments.clear();
