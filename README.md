@@ -104,13 +104,14 @@ ContourSegment/
    - Run `setup_env.bat` first
    - Ensure Qt is installed in the expected location
 
-2. **"Qt libraries not found"**
+3. **"Qt libraries not found"**
    - Verify Qt installation path
    - Check that MSVC 2019 or latest 64-bit components are installed
 
-3. **Build errors**
+4. **Build errors**
    - Ensure Visual Studio C++ tools are installed
    - Check that Qt version matches project configuration
+   - Install Qt Visual Studio Tools extension if missing
 
 ### Getting Help
 

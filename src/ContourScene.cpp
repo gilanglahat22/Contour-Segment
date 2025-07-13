@@ -194,8 +194,8 @@ void ContourScene::drawBackground(QPainter *painter, const QRectF &rect)
         QPen pen(Qt::lightGray, 0);
         painter->setPen(pen);
         
-        qreal left = int(rect.left()) - (int(rect.left()) % m_gridSize);
-        qreal top = int(rect.top()) - (int(rect.top()) % m_gridSize);
+        qreal left = int(rect.left()) - std::fmod(int(rect.left()), m_gridSize);
+        qreal top = int(rect.top()) - std::fmod(int(rect.top()), m_gridSize);
         
         QVarLengthArray<QLineF, 100> lines;
         
@@ -229,10 +229,11 @@ void ContourScene::createSegmentItem(const contour::Segment& segment)
             break;
         }
         case contour::SegmentType::Arc: {
-            auto center = segment.getCenter();
-            auto radius = segment.getRadius();
-            auto startAngle = segment.getStartAngle();
-            auto endAngle = segment.getEndAngle();
+            const auto& arcSegment = static_cast<const contour::ArcSegment&>(segment);
+            auto center = arcSegment.getCenter();
+            auto radius = arcSegment.getRadius();
+            auto startAngle = arcSegment.getStartAngle();
+            auto endAngle = arcSegment.getEndAngle();
             
             QPainterPath path;
             QRectF rect(center.x - radius, center.y - radius, 
