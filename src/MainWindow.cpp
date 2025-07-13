@@ -67,22 +67,31 @@ MainWindow::MainWindow(QWidget* parent)
     setupMenuBar();
     setupToolBar();
     setupStatusBar();
+    
     setupSegmentManagementPanel();
-    
-    // Verify QComboBox is properly created before connecting signals
-    if (m_segmentSelectCombo) {
-        std::cout << "[TRACE] QComboBox is valid, proceeding with signal connection..." << std::endl;
-        std::cout << "[TRACE] QComboBox current index: " << m_segmentSelectCombo->currentIndex() << std::endl;
-        std::cout << "[TRACE] QComboBox item count: " << m_segmentSelectCombo->count() << std::endl;
-    } else {
-        std::cout << "[ERROR] QComboBox is null after setupSegmentManagementPanel!" << std::endl;
-    }
-    
     connectSignals();
-    std::cout << "[TRACE] m_segmentSelectCombo address (after connectSignals): " << m_segmentSelectCombo << std::endl;
+    updateSegmentManagementPanel();
+    onSegmentTypeChanged(0);
+    if (m_lineStartXEdit) m_lineStartXEdit->setText("0.0");
+    if (m_lineStartYEdit) m_lineStartYEdit->setText("0.0");
+    if (m_lineEndXEdit) m_lineEndXEdit->setText("100.0");
+    if (m_lineEndYEdit) m_lineEndYEdit->setText("100.0");
+    
+    if (m_arcCenterXEdit) m_arcCenterXEdit->setText("50.0");
+    if (m_arcCenterYEdit) m_arcCenterYEdit->setText("50.0");
+    if (m_arcRadiusEdit) m_arcRadiusEdit->setText("25.0");
+    if (m_arcStartAngleEdit) m_arcStartAngleEdit->setText("0.0");
+    if (m_arcEndAngleEdit) m_arcEndAngleEdit->setText("90.0");
+    if (m_arcClockwiseCheck) m_arcClockwiseCheck->setChecked(false);
     
     setWindowTitle("ContourSegment - Contour Editor with Segment Management");
     resize(1200, 800);
+    
+    // Force show the panel
+    if (m_segmentManagementPanel) {
+        m_segmentManagementPanel->show();
+        m_segmentManagementPanel->raise();
+    }
 
     // Tambahkan dark style agar menu, panel, dan konten kontras
     QString darkStyle = R"(
@@ -268,7 +277,7 @@ void MainWindow::setupStatusBar()
 }
 
 void MainWindow::setupSegmentManagementPanel()
-{
+{   
     m_segmentManagementPanel = new QGroupBox("Segment Management", this);
     m_segmentManagementPanel->setMinimumWidth(300);
     m_segmentManagementPanel->setMaximumWidth(300);
@@ -292,12 +301,16 @@ void MainWindow::setupSegmentManagementPanel()
     segmentManagementLayout->setContentsMargins(10, 10, 10, 10);
 
     // Segment Type Combo Box
+    QLabel* typeLabel = new QLabel("Segment Type:", m_segmentManagementPanel);
+    segmentManagementLayout->addWidget(typeLabel);
     m_segmentTypeCombo = new QComboBox(m_segmentManagementPanel);
     m_segmentTypeCombo->addItem("Line");
     m_segmentTypeCombo->addItem("Arc");
     segmentManagementLayout->addWidget(m_segmentTypeCombo);
 
     // Insert Position Spin Box
+    QLabel* positionLabel = new QLabel("Insert Position:", m_segmentManagementPanel);
+    segmentManagementLayout->addWidget(positionLabel);
     m_insertPositionSpinBox = new QSpinBox(m_segmentManagementPanel);
     m_insertPositionSpinBox->setMinimum(0);
     m_insertPositionSpinBox->setMaximum(100); // Arbitrary large number for now
@@ -376,10 +389,13 @@ void MainWindow::setupSegmentManagementPanel()
 
     segmentManagementLayout->addWidget(arcSegmentGroup);
 
-    // Combo box pilih segmen
+    // Segment Selection
+    QLabel* selectLabel = new QLabel("Select Segment:", m_segmentManagementPanel);
+    segmentManagementLayout->addWidget(selectLabel);
     m_segmentSelectCombo = new QComboBox(m_segmentManagementPanel);
     segmentManagementLayout->addWidget(m_segmentSelectCombo);
-    // Tombol update segmen
+    
+    // Update Segment Button
     m_updateSegmentButton = new QPushButton("Update Segment", m_segmentManagementPanel);
     segmentManagementLayout->addWidget(m_updateSegmentButton);
 }
@@ -398,10 +414,24 @@ void MainWindow::connectSignals()
     // Connect scene signals
     connect(m_scene, &ContourScene::contourModified, this, &MainWindow::onContourModified);
     
-    // Connect segment management panel signals
     connect(m_addSegmentButton, &QPushButton::clicked, this, &MainWindow::onAddSegmentClicked);
     connect(m_insertSegmentButton, &QPushButton::clicked, this, &MainWindow::onInsertSegmentClicked);
     connect(m_removeSegmentButton, &QPushButton::clicked, this, &MainWindow::onRemoveSegmentClicked);
+    connect(m_updateSegmentButton, &QPushButton::clicked, this, &MainWindow::onUpdateSegmentClicked);
+    
+    // Connect segment type combo box
+    connect(m_segmentTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), 
+            this, &MainWindow::onSegmentTypeChanged);
+    
+    // Connect insert position spin box
+    connect(m_insertPositionSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, &MainWindow::onInsertPositionChanged);
+    
+    // Connect segment select combo box
+    connect(m_segmentSelectCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), 
+            this, &MainWindow::onSegmentSelectChanged);
+    
+    // Connect form enable/disable based on segment type
     connect(m_segmentTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int idx){
         // Enable/disable form sesuai tipe
         bool isLine = (idx == 0);
@@ -416,10 +446,6 @@ void MainWindow::connectSignals()
         m_arcEndAngleEdit->setEnabled(!isLine);
         m_arcClockwiseCheck->setEnabled(!isLine);
     });
-    connect(m_insertPositionSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
-            this, &MainWindow::onInsertPositionChanged);
-    connect(m_segmentSelectCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::onSegmentSelectChanged);
-    connect(m_updateSegmentButton, &QPushButton::clicked, this, &MainWindow::onUpdateSegmentClicked);
 }
 
 void MainWindow::onNewContour()
@@ -435,6 +461,7 @@ void MainWindow::onNewContour()
     }
     
     m_scene->clear();
+    updateSegmentManagementPanel();
     m_statusBar->showMessage("New contour created", 2000);
 }
 
@@ -465,6 +492,7 @@ void MainWindow::onSaveContour()
 void MainWindow::onClearContour()
 {
     m_scene->clear();
+    updateSegmentManagementPanel();
     m_statusBar->showMessage("Contour cleared", 2000);
 }
 
@@ -480,19 +508,6 @@ void MainWindow::onToggleSnap()
     m_statusBar->showMessage(m_snapAction->isChecked() ? "Snap to grid enabled" : "Snap to grid disabled", 1000);
 }
 
-void MainWindow::onAbout()
-{
-    QMessageBox::about(this, "About ContourSegment", 
-        "ContourSegment v1.0\n\n"
-        "A contour editor for creating and manipulating geometric contours.\n\n"
-        "Features:\n"
-        "- Draw line segments\n"
-        "- Draw arc segments\n"
-        "- Grid snapping\n"
-        "- Contour validation\n\n"
-        "Click and drag to draw segments.");
-}
-
 void MainWindow::onContourModified()
 {
     QString status = QString("Segments: %1 | Valid: %2 | Closed: %3")
@@ -504,11 +519,38 @@ void MainWindow::onContourModified()
     updateSegmentManagementPanel();
 }
 
-void MainWindow::onSegmentTypeChanged(int index)
+void MainWindow::onAbout()
 {
+    QMessageBox::about(this, "About ContourSegment", 
+        "ContourSegment v1.0\n\n"
+        "A contour editor for creating and manipulating geometric contours.\n\n"
+        "Features:\n"
+        "- Draw line segments\n"
+        "- Draw arc segments\n"
+        "- Grid snapping\n"
+        "- Contour validation\n"
+        "- Segment management\n\n"
+        "Use the segment management panel to add, insert, remove, and update segments.");
+}
+
+void MainWindow::onSegmentTypeChanged(int index)
+{   
     // Update the insert position maximum based on current segment count
     size_t segmentCount = m_scene->getSegmentCount();
     m_insertPositionSpinBox->setMaximum(static_cast<int>(segmentCount));
+    
+    // Enable/disable form sesuai tipe
+    bool isLine = (index == 0);
+    m_lineStartXEdit->setEnabled(isLine);
+    m_lineStartYEdit->setEnabled(isLine);
+    m_lineEndXEdit->setEnabled(isLine);
+    m_lineEndYEdit->setEnabled(isLine);
+    m_arcCenterXEdit->setEnabled(!isLine);
+    m_arcCenterYEdit->setEnabled(!isLine);
+    m_arcRadiusEdit->setEnabled(!isLine);
+    m_arcStartAngleEdit->setEnabled(!isLine);
+    m_arcEndAngleEdit->setEnabled(!isLine);
+    m_arcClockwiseCheck->setEnabled(!isLine);
     
     // Update validation status
     updateValidationStatus();
@@ -519,22 +561,45 @@ void MainWindow::onInsertPositionChanged(int value)
     // This slot can be used for additional validation or UI updates
     // For now, just update the validation status
     updateValidationStatus();
+    updateButtonStates();
 }
 
 void MainWindow::updateSegmentManagementPanel()
-{
+{    
     size_t segmentCount = m_scene->getSegmentCount();
     m_segmentCountLabel->setText(QString("Total Segments: %1").arg(segmentCount));
     m_insertPositionSpinBox->setMaximum(static_cast<int>(segmentCount));
+    
+    // Update segment selection combo
     m_segmentSelectCombo->clear();
     for (size_t i = 0; i < segmentCount; ++i) {
         m_segmentSelectCombo->addItem(QString("Segment %1").arg(i+1));
     }
-    if (segmentCount > 0) fillFormWithSegment(0);
+    
+    // Update form if there are segments
+    if (segmentCount > 0) {
+        fillFormWithSegment(0);
+    } else {
+        // Clear form if no segments
+        m_lineStartXEdit->clear();
+        m_lineStartYEdit->clear();
+        m_lineEndXEdit->clear();
+        m_lineEndYEdit->clear();
+        m_arcCenterXEdit->clear();
+        m_arcCenterYEdit->clear();
+        m_arcRadiusEdit->clear();
+        m_arcStartAngleEdit->clear();
+        m_arcEndAngleEdit->clear();
+        m_arcClockwiseCheck->setChecked(false);
+    }
+    
     updateValidationStatus();
     
-    // Update edit panel as well
-    // updateEditPanel(); // This line is removed as per the new_code
+    // Enable/disable form based on current segment type
+    onSegmentTypeChanged(m_segmentTypeCombo->currentIndex());
+    
+    // Update button states
+    updateButtonStates();
 }
 
 void MainWindow::updateValidationStatus()
@@ -566,21 +631,36 @@ void MainWindow::updateValidationStatus()
 
 void MainWindow::onSegmentSelectChanged(int index) {
     fillFormWithSegment(index);
+    updateButtonStates();
 }
 
 void MainWindow::onUpdateSegmentClicked() {
     int idx = m_segmentSelectCombo->currentIndex();
-    if (idx < 0 || idx >= (int)m_scene->getSegmentCount()) return;
-    // Cek tipe segmen yang dipilih
+    
+    if (idx < 0 || idx >= (int)m_scene->getSegmentCount()) {
+        QMessageBox::warning(this, "No Selection", "Please select a segment to update.");
+        return;
+    }
+    
+    // Check segment type compatibility
     auto& contour = m_scene->getContour();
     auto& seg = contour[idx];
+    
     if (seg.getType() == contour::SegmentType::Line && m_segmentTypeCombo->currentIndex() == 0) {
         bool ok1, ok2, ok3, ok4;
         double startX = m_lineStartXEdit->text().toDouble(&ok1);
         double startY = m_lineStartYEdit->text().toDouble(&ok2);
         double endX = m_lineEndXEdit->text().toDouble(&ok3);
         double endY = m_lineEndYEdit->text().toDouble(&ok4);
-        if (!ok1 || !ok2 || !ok3 || !ok4) return;
+        
+        if (!ok1 || !ok2 || !ok3 || !ok4) {
+            QMessageBox::warning(this, "Invalid Input", "Please enter valid numeric values for line coordinates.");
+            return;
+        }
+        if (geometry::Point2D(startX, startY).isEqual(geometry::Point2D(endX, endY), 1e-6)) {
+            QMessageBox::warning(this, "Invalid Line", "Start and end points cannot be the same.");
+            return;
+        }
         auto newSeg = contour::createLineSegment({startX, startY}, {endX, endY});
         contour.replaceSegment(idx, std::move(newSeg));
     } else if (seg.getType() == contour::SegmentType::Arc && m_segmentTypeCombo->currentIndex() == 1) {
@@ -590,25 +670,46 @@ void MainWindow::onUpdateSegmentClicked() {
         double r = m_arcRadiusEdit->text().toDouble(&ok3);
         double sa = m_arcStartAngleEdit->text().toDouble(&ok4);
         double ea = m_arcEndAngleEdit->text().toDouble(&ok5);
-        if (!ok1 || !ok2 || !ok3 || !ok4 || !ok5) return;
+        
+        if (!ok1 || !ok2 || !ok3 || !ok4 || !ok5) {
+            QMessageBox::warning(this, "Invalid Input", "Please enter valid numeric values for arc parameters.");
+            return;
+        }
+        if (r <= 0) {
+            QMessageBox::warning(this, "Invalid Radius", "Radius must be positive.");
+            return;
+        }
         double saRad = sa * M_PI / 180.0;
         double eaRad = ea * M_PI / 180.0;
         bool cw = m_arcClockwiseCheck->isChecked();
         auto newSeg = contour::createArcSegment({cx, cy}, r, saRad, eaRad, cw);
         contour.replaceSegment(idx, std::move(newSeg));
+    } else {
+        QMessageBox::warning(this, "Type Mismatch", "Selected segment type does not match the form type.");
+        return;
     }
+    
     m_scene->updateScene();
     updateSegmentManagementPanel();
     m_segmentSelectCombo->setCurrentIndex(idx);
+    m_statusBar->showMessage("Segment updated successfully", 2000);
 }
 
 void MainWindow::fillFormWithSegment(int index) {
     if (index < 0 || index >= (int)m_scene->getSegmentCount()) {
-        m_lineStartXEdit->clear(); m_lineStartYEdit->clear(); m_lineEndXEdit->clear(); m_lineEndYEdit->clear();
-        m_arcCenterXEdit->clear(); m_arcCenterYEdit->clear(); m_arcRadiusEdit->clear(); m_arcStartAngleEdit->clear(); m_arcEndAngleEdit->clear();
+        m_lineStartXEdit->clear(); 
+        m_lineStartYEdit->clear(); 
+        m_lineEndXEdit->clear(); 
+        m_lineEndYEdit->clear();
+        m_arcCenterXEdit->clear(); 
+        m_arcCenterYEdit->clear(); 
+        m_arcRadiusEdit->clear(); 
+        m_arcStartAngleEdit->clear(); 
+        m_arcEndAngleEdit->clear();
         m_arcClockwiseCheck->setChecked(false);
         return;
     }
+    
     const auto& seg = m_scene->getContour()[index];
     if (seg.getType() == contour::SegmentType::Line) {
         m_segmentTypeCombo->setCurrentIndex(0);
@@ -627,6 +728,9 @@ void MainWindow::fillFormWithSegment(int index) {
         m_arcEndAngleEdit->setText(QString::number(arc.getEndAngle() * 180.0 / M_PI));
         m_arcClockwiseCheck->setChecked(arc.isClockwise());
     }
+    
+    // Update form enable/disable state
+    onSegmentTypeChanged(m_segmentTypeCombo->currentIndex());
 } 
 
 void MainWindow::onAddSegmentClicked() {
@@ -636,8 +740,15 @@ void MainWindow::onAddSegmentClicked() {
         double y1 = m_lineStartYEdit->text().toDouble(&ok2);
         double x2 = m_lineEndXEdit->text().toDouble(&ok3);
         double y2 = m_lineEndYEdit->text().toDouble(&ok4);
-        if (!ok1 || !ok2 || !ok3 || !ok4) return;
-        if (geometry::Point2D(x1, y1).isEqual(geometry::Point2D(x2, y2), 1e-6)) return;
+        
+        if (!ok1 || !ok2 || !ok3 || !ok4) {
+            QMessageBox::warning(this, "Invalid Input", "Please enter valid numeric values for line coordinates.");
+            return;
+        }
+        if (geometry::Point2D(x1, y1).isEqual(geometry::Point2D(x2, y2), 1e-6)) {
+            QMessageBox::warning(this, "Invalid Line", "Start and end points cannot be the same.");
+            return;
+        }
         m_scene->addLineSegment({x1, y1}, {x2, y2});
     } else { // Arc
         bool ok1, ok2, ok3, ok4, ok5;
@@ -646,30 +757,57 @@ void MainWindow::onAddSegmentClicked() {
         double r = m_arcRadiusEdit->text().toDouble(&ok3);
         double sa = m_arcStartAngleEdit->text().toDouble(&ok4);
         double ea = m_arcEndAngleEdit->text().toDouble(&ok5);
-        if (!ok1 || !ok2 || !ok3 || !ok4 || !ok5 || r <= 0) return;
+        
+        if (!ok1 || !ok2 || !ok3 || !ok4 || !ok5) {
+            QMessageBox::warning(this, "Invalid Input", "Please enter valid numeric values for arc parameters.");
+            return;
+        }
+        if (r <= 0) {
+            QMessageBox::warning(this, "Invalid Radius", "Radius must be positive.");
+            return;
+        }
         double saRad = sa * M_PI / 180.0;
         double eaRad = ea * M_PI / 180.0;
         m_scene->addArcSegment({cx, cy}, r, saRad, eaRad, m_arcClockwiseCheck->isChecked());
     }
+    
+    // Update scene and panel
     m_scene->updateScene();
     updateSegmentManagementPanel();
-    // Pilih segmen terakhir
+    
+    // Select the last segment
     int lastIdx = (int)m_scene->getSegmentCount() - 1;
-    if (lastIdx >= 0) m_segmentSelectCombo->setCurrentIndex(lastIdx);
+    if (lastIdx >= 0) {
+        m_segmentSelectCombo->setCurrentIndex(lastIdx);
+    }
+    
+    m_statusBar->showMessage("Segment added successfully", 2000);
 }
 
 void MainWindow::onInsertSegmentClicked() {
     int pos = m_insertPositionSpinBox->value();
     size_t count = m_scene->getSegmentCount();
-    if (pos < 0 || pos > (int)count) return;
+    
+    if (pos < 0 || pos > (int)count) {
+        QMessageBox::warning(this, "Invalid Position", "Insert position is out of range.");
+        return;
+    }
+    
     if (m_segmentTypeCombo->currentIndex() == 0) { // Line
         bool ok1, ok2, ok3, ok4;
         double x1 = m_lineStartXEdit->text().toDouble(&ok1);
         double y1 = m_lineStartYEdit->text().toDouble(&ok2);
         double x2 = m_lineEndXEdit->text().toDouble(&ok3);
         double y2 = m_lineEndYEdit->text().toDouble(&ok4);
-        if (!ok1 || !ok2 || !ok3 || !ok4) return;
-        if (geometry::Point2D(x1, y1).isEqual(geometry::Point2D(x2, y2), 1e-6)) return;
+        
+        if (!ok1 || !ok2 || !ok3 || !ok4) {
+            QMessageBox::warning(this, "Invalid Input", "Please enter valid numeric values for line coordinates.");
+            return;
+        }
+        if (geometry::Point2D(x1, y1).isEqual(geometry::Point2D(x2, y2), 1e-6)) {
+            QMessageBox::warning(this, "Invalid Line", "Start and end points cannot be the same.");
+            return;
+        }
         auto seg = contour::createLineSegment({x1, y1}, {x2, y2});
         m_scene->getContour().insertSegment(pos, std::move(seg));
     } else { // Arc
@@ -679,27 +817,69 @@ void MainWindow::onInsertSegmentClicked() {
         double r = m_arcRadiusEdit->text().toDouble(&ok3);
         double sa = m_arcStartAngleEdit->text().toDouble(&ok4);
         double ea = m_arcEndAngleEdit->text().toDouble(&ok5);
-        if (!ok1 || !ok2 || !ok3 || !ok4 || !ok5 || r <= 0) return;
+        
+        if (!ok1 || !ok2 || !ok3 || !ok4 || !ok5) {
+            QMessageBox::warning(this, "Invalid Input", "Please enter valid numeric values for arc parameters.");
+            return;
+        }
+        if (r <= 0) {
+            QMessageBox::warning(this, "Invalid Radius", "Radius must be positive.");
+            return;
+        }
         double saRad = sa * M_PI / 180.0;
         double eaRad = ea * M_PI / 180.0;
         auto seg = contour::createArcSegment({cx, cy}, r, saRad, eaRad, m_arcClockwiseCheck->isChecked());
         m_scene->getContour().insertSegment(pos, std::move(seg));
     }
+    
     m_scene->updateScene();
     updateSegmentManagementPanel();
-    // Pilih segmen yang baru diinsert
+    
+    // Select the newly inserted segment
     m_segmentSelectCombo->setCurrentIndex(pos);
+    m_statusBar->showMessage("Segment inserted successfully", 2000);
 }
 
 void MainWindow::onRemoveSegmentClicked() {
+    
     int pos = m_insertPositionSpinBox->value();
     size_t count = m_scene->getSegmentCount();
-    if (count == 0 || pos < 0 || pos >= (int)count) return;
+    
+    if (count == 0) {
+        QMessageBox::warning(this, "No Segments", "There are no segments to remove.");
+        return;
+    }
+    if (pos < 0 || pos >= (int)count) {
+        QMessageBox::warning(this, "Invalid Position", "Remove position is out of range.");
+        return;
+    }
     m_scene->getContour().removeSegment(pos);
     m_scene->updateScene();
     updateSegmentManagementPanel();
-    // Pilih segmen terdekat
+    
+    // Select the nearest segment
     int sel = pos;
-    if (sel >= (int)m_scene->getSegmentCount()) sel = (int)m_scene->getSegmentCount() - 1;
-    if (sel >= 0) m_segmentSelectCombo->setCurrentIndex(sel);
+    if (sel >= (int)m_scene->getSegmentCount()) {
+        sel = (int)m_scene->getSegmentCount() - 1;
+    }
+    if (sel >= 0) {
+        m_segmentSelectCombo->setCurrentIndex(sel);
+    }
+    
+    m_statusBar->showMessage("Segment removed successfully", 2000);
+}
+
+void MainWindow::updateButtonStates()
+{
+    size_t segmentCount = m_scene->getSegmentCount();
+    int selectedIndex = m_segmentSelectCombo->currentIndex();
+    
+    // Enable/disable buttons based on current state
+    m_addSegmentButton->setEnabled(true); // Always enabled
+    m_insertSegmentButton->setEnabled(true); // Always enabled
+    m_removeSegmentButton->setEnabled(segmentCount > 0);
+    m_updateSegmentButton->setEnabled(selectedIndex >= 0 && selectedIndex < (int)segmentCount);
+    
+    // Update insert position maximum
+    m_insertPositionSpinBox->setMaximum(static_cast<int>(segmentCount));
 } 

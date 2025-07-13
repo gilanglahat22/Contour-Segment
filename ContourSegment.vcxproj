@@ -140,7 +140,7 @@
     <ClCompile Include="src\Geometry.cpp" />
     <ClCompile Include="src\MainWindow.cpp" />
     <ClCompile Include="src\Segment.cpp" />
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="forms\mainwindow.ui" />

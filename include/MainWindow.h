@@ -57,6 +57,7 @@ private:
     void updateSegmentManagementPanel();
     void updateValidationStatus();
     void fillFormWithSegment(int index);
+    void updateButtonStates();
 
     ContourScene* m_scene;
     QGraphicsView* m_view;
