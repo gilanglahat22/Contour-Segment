@@ -154,9 +154,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Zoom and pan navigation
 - Modern Qt6-based GUI 
 
-## Menjalankan Unit Test
+## Running Unit Tests
 
-### Build dan Jalankan di Linux/Mac (g++)
+### Build and Run on Linux/Mac (g++)
 ```sh
 # Build
  g++ -std=c++17 -Iinclude -o ContourTests \
@@ -166,23 +166,23 @@ This project is licensed under the MIT License - see the LICENSE file for detail
    src/Geometry.cpp \
    src/ContourUtilities.cpp \
    src/ContourVisualizer.cpp
-# Jalankan
+# Run
 ./ContourTests
 ```
 
-### Build dan Jalankan di Windows (MSVC/Visual Studio Command Prompt)
+### Build and Run on Windows (MSVC/Visual Studio Command Prompt)
 ```bat
 REM Build
 cl /EHsc /Iinclude tests\ContourTests.cpp src\Contour.cpp src\Segment.cpp src\Geometry.cpp src\ContourUtilities.cpp src\ContourVisualizer.cpp
-REM Jalankan
+REM Run
 ContourTests.exe
 ```
 
-Jika test berhasil, akan muncul output berwarna hijau:
+If the test passes, you will see green output:
 ```
 Async valid/invalid contour search test PASSED
 ```
-Jika gagal, akan muncul output berwarna merah:
+If the test fails, you will see red output:
 ```
 Async valid/invalid contour search test FAILED
 ``` 
