@@ -110,7 +110,11 @@ void MainWindow::setupMenuBar()
     fileMenu->addAction(m_openAction);
     fileMenu->addAction(m_saveAction);
     fileMenu->addSeparator();
-    fileMenu->addAction("E&xit", this, &QWidget::close, QKeySequence::Quit);
+    QAction* exitAction = new QAction("E&xit", this);
+    exitAction->setShortcut(QKeySequence::Quit);
+    exitAction->setStatusTip("Exit the application");
+    connect(exitAction, &QAction::triggered, this, &QWidget::close);
+    fileMenu->addAction(exitAction);
     
     // Edit menu
     QMenu* editMenu = menuBar()->addMenu("&Edit");
