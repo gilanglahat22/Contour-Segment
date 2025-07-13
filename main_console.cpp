@@ -1,19 +1,15 @@
-#include "include/Contour.h"
-#include "include/ContourUtilities.h"
-#include "include/ContourVisualizer.h"
-#include "include/Geometry.h"
-#include "include/MainWindow.h" // Uncommented Qt header
-#include <QApplication>
-#include <QMainWindow>
+#include "../include/Contour.h"
+#include "../include/Segment.h"
+#include "../include/Geometry.h"
+#include "../include/ContourUtilities.h"
+#include "../include/ContourVisualizer.h"
 #include <iostream>
-#include <string>
 #include <vector>
 #include <memory>
-#include <future>
-#include <algorithm>
-#include <set>
-#include <chrono>
 #include <thread>
+#include <future>
+#include <chrono>
+#include <string>
 
 using namespace contour;
 using namespace geometry;
@@ -145,6 +141,19 @@ void runContourTests() {
         std::cout << "   ✓ Async search works: " << validResults.size() << " valid, " 
                   << invalidResults.size() << " invalid contours found" << std::endl;
         
+        // Test 8: Visualization
+        std::cout << "\n8. Testing visualization..." << std::endl;
+        contour::visualization::VisualizationOptions options;
+        options.width = 40;
+        options.height = 20;
+        options.showCoordinates = true;
+        
+        contour::visualization::ContourVisualizer visualizer(options);
+        std::string visualization = visualizer.visualizeContour(contour);
+        std::cout << "   ✓ Visualization works" << std::endl;
+        std::cout << "\nContour Visualization:" << std::endl;
+        std::cout << visualization << std::endl;
+        
         std::cout << "\n=================================" << std::endl;
         std::cout << "ALL TESTS PASSED! ✓" << std::endl;
         std::cout << "=================================" << std::endl;
@@ -180,10 +189,8 @@ int main(int argc, char* argv[])
         }
     }
     
-    QApplication app(argc, argv); // Enabled Qt application
-    
-    std::cout << "ContourSegment - GUI Version" << std::endl;
-    std::cout << "================================" << std::endl;
+    std::cout << "ContourSegment - Console Version" << std::endl;
+    std::cout << "=================================" << std::endl;
     
     try {
         // Create a simple contour for demonstration
@@ -207,11 +214,21 @@ int main(int argc, char* argv[])
         std::cout << "Perimeter: " << perimeter << std::endl;
         std::cout << "Area: " << area << std::endl;
         
-        // Create and show the main window
-        MainWindow window;
-        window.show();
+        // Visualize the contour
+        std::cout << "\nContour Visualization:" << std::endl;
+        contour::visualization::VisualizationOptions options;
+        options.width = 50;
+        options.height = 25;
+        options.showCoordinates = true;
         
-        return app.exec(); // Enable Qt event loop
+        contour::visualization::ContourVisualizer visualizer(options);
+        std::string visualization = visualizer.visualizeContour(contour);
+        std::cout << visualization << std::endl;
+        
+        std::cout << "\nPress Enter to exit..." << std::endl;
+        std::cin.get();
+        
+        return 0;
         
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;

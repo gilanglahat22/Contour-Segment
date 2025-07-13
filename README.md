@@ -67,18 +67,11 @@ setup_env.bat
 ```
 ContourSegment/
 ├── include/           # Header files
-│   ├── Contour.h     # Contour class definition
-│   ├── ContourScene.h # Qt scene for drawing
-│   ├── MainWindow.h  # Main application window
-│   └── ...
 ├── src/              # Source files
-│   ├── Contour.cpp   # Contour implementation
-│   ├── ContourScene.cpp # Qt scene implementation
-│   ├── MainWindow.cpp # Main window implementation
-│   └── ...
-├── forms/            # Qt UI forms
+├── tests/            # Test files
 ├── docs/             # Documentation
-├── tests/            # Unit tests
+├── scripts/          # Build scripts
+└── x64/              # Build output
 ```
 
 ## Building from Source
