@@ -1,5 +1,7 @@
 #include "../include/Geometry.h"
 #include <cstdlib>
+#include <cmath> // Required for std::sqrt and std::abs
+#include <limits> // Required for std::numeric_limits
 
 namespace geometry
 {
@@ -43,11 +45,19 @@ namespace geometry
     // Distance and comparison functions
     double Point2D::distanceTo(const Point2D& other) const
     {
+        // Check for NaN values
+        if (std::isnan(x) || std::isnan(y) || std::isnan(other.x) || std::isnan(other.y)) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
         return std::sqrt(distanceSquaredTo(other));
     }
 
     double Point2D::distanceSquaredTo(const Point2D& other) const
     {
+        // Check for NaN values
+        if (std::isnan(x) || std::isnan(y) || std::isnan(other.x) || std::isnan(other.y)) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
         const double dx = x - other.x;
         const double dy = y - other.y;
         return dx * dx + dy * dy;
@@ -55,19 +65,32 @@ namespace geometry
 
     bool Point2D::isEqual(const Point2D& other, double epsilon) const
     {
+        // Check for NaN values
+        if (std::isnan(x) || std::isnan(y) || std::isnan(other.x) || std::isnan(other.y)) {
+            return false;
+        }
         return geometry::isEqual(x, other.x, epsilon) && geometry::isEqual(y, other.y, epsilon);
     }
 
     // Utility functions
     double Point2D::magnitude() const
     {
+        // Check for NaN values
+        if (std::isnan(x) || std::isnan(y)) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
         return std::sqrt(x * x + y * y);
     }
 
     Point2D Point2D::normalized() const
     {
+        // Check for NaN values
+        if (std::isnan(x) || std::isnan(y)) {
+            return Point2D(std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN());
+        }
+        
         const double mag = magnitude();
-        if (geometry::isEqual(mag, 0.0))
+        if (std::isnan(mag) || geometry::isEqual(mag, 0.0))
         {
             return Point2D(0.0, 0.0);
         }
@@ -76,12 +99,20 @@ namespace geometry
 
     double Point2D::dot(const Point2D& other) const
     {
+        // Check for NaN values
+        if (std::isnan(x) || std::isnan(y) || std::isnan(other.x) || std::isnan(other.y)) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
         return x * other.x + y * other.y;
     }
 
     // Global utility functions
     bool isEqual(double a, double b, double epsilon)
     {
+        // Check for NaN values
+        if (std::isnan(a) || std::isnan(b)) {
+            return false;
+        }
         return std::abs(a - b) < epsilon;
     }
 

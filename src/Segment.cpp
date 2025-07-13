@@ -1,13 +1,25 @@
 #include "../include/Segment.h"
 #include <stdexcept>
 #include <cmath>
+#include <limits> // Added for std::numeric_limits
+#include <iostream> // Added for std::cerr
 
 namespace contour
 {
     // Base Segment class implementation
     bool Segment::isConnectedTo(const Segment& other, double epsilon) const
     {
-        return getEndPoint().isEqual(other.getStartPoint(), epsilon);
+        // Validate epsilon
+        if (std::isnan(epsilon) || epsilon < 0) {
+            return false;
+        }
+        
+        try {
+            return getEndPoint().isEqual(other.getStartPoint(), epsilon);
+        } catch (const std::exception& e) {
+            std::cerr << "Error in isConnectedTo: " << e.what() << std::endl;
+            return false;
+        }
     }
 
     // LineSegment implementation
@@ -23,11 +35,23 @@ namespace contour
 
     geometry::Point2D LineSegment::getStartPoint() const
     {
+        // Validate point
+        if (std::isnan(m_start.x) || std::isnan(m_start.y)) {
+            return geometry::Point2D(std::numeric_limits<double>::quiet_NaN(), 
+                                   std::numeric_limits<double>::quiet_NaN());
+        }
+        
         return m_start;
     }
 
     geometry::Point2D LineSegment::getEndPoint() const
     {
+        // Validate point
+        if (std::isnan(m_end.x) || std::isnan(m_end.y)) {
+            return geometry::Point2D(std::numeric_limits<double>::quiet_NaN(), 
+                                   std::numeric_limits<double>::quiet_NaN());
+        }
+        
         return m_end;
     }
 
@@ -43,6 +67,12 @@ namespace contour
 
     double LineSegment::getLength() const
     {
+        // Validate points
+        if (std::isnan(m_start.x) || std::isnan(m_start.y) || 
+            std::isnan(m_end.x) || std::isnan(m_end.y)) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+        
         return m_start.distanceTo(m_end);
     }
 
@@ -53,14 +83,33 @@ namespace contour
             return false;
         }
 
-        const auto& otherLine = static_cast<const LineSegment&>(other);
-        return m_start.isEqual(otherLine.m_start, epsilon) && 
-               m_end.isEqual(otherLine.m_end, epsilon);
+        try {
+            const auto& otherLine = dynamic_cast<const LineSegment&>(other);
+            return m_start.isEqual(otherLine.m_start, epsilon) && 
+                   m_end.isEqual(otherLine.m_end, epsilon);
+        } catch (const std::bad_cast& e) {
+            std::cerr << "Failed to cast to LineSegment: " << e.what() << std::endl;
+            return false;
+        }
     }
 
     geometry::Vector2D LineSegment::getDirection() const
     {
-        return (m_end - m_start).normalized();
+        // Validate points
+        if (std::isnan(m_start.x) || std::isnan(m_start.y) || 
+            std::isnan(m_end.x) || std::isnan(m_end.y)) {
+            return geometry::Vector2D(std::numeric_limits<double>::quiet_NaN(), 
+                                    std::numeric_limits<double>::quiet_NaN());
+        }
+        
+        auto result = (m_end - m_start).normalized();
+        
+        // Check if normalization failed
+        if (std::isnan(result.x) || std::isnan(result.y)) {
+            return geometry::Vector2D(0.0, 0.0);
+        }
+        
+        return result;
     }
 
     geometry::Point2D LineSegment::getPointAt(double t) const
@@ -69,6 +118,14 @@ namespace contour
         {
             throw std::invalid_argument("LineSegment::getPointAt: t must be in range [0,1]");
         }
+        
+        // Validate points
+        if (std::isnan(m_start.x) || std::isnan(m_start.y) || 
+            std::isnan(m_end.x) || std::isnan(m_end.y)) {
+            return geometry::Point2D(std::numeric_limits<double>::quiet_NaN(), 
+                                   std::numeric_limits<double>::quiet_NaN());
+        }
+        
         return m_start + (m_end - m_start) * t;
     }
 
@@ -96,11 +153,27 @@ namespace contour
 
     geometry::Point2D ArcSegment::getStartPoint() const
     {
+        // Validate arc parameters
+        if (std::isnan(m_center.x) || std::isnan(m_center.y) || 
+            std::isnan(m_radius) || m_radius <= 0 ||
+            std::isnan(m_startAngle)) {
+            return geometry::Point2D(std::numeric_limits<double>::quiet_NaN(), 
+                                   std::numeric_limits<double>::quiet_NaN());
+        }
+        
         return pointFromAngle(m_startAngle);
     }
 
     geometry::Point2D ArcSegment::getEndPoint() const
     {
+        // Validate arc parameters
+        if (std::isnan(m_center.x) || std::isnan(m_center.y) || 
+            std::isnan(m_radius) || m_radius <= 0 ||
+            std::isnan(m_endAngle)) {
+            return geometry::Point2D(std::numeric_limits<double>::quiet_NaN(), 
+                                   std::numeric_limits<double>::quiet_NaN());
+        }
+        
         return pointFromAngle(m_endAngle);
     }
 
@@ -116,7 +189,17 @@ namespace contour
 
     double ArcSegment::getLength() const
     {
-        return m_radius * getAngleSpan();
+        // Validate radius and angle span
+        if (std::isnan(m_radius) || m_radius <= 0) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+        
+        double angleSpan = getAngleSpan();
+        if (std::isnan(angleSpan)) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+        
+        return m_radius * angleSpan;
     }
 
     bool ArcSegment::isEqual(const Segment& other, double epsilon) const
@@ -126,16 +209,26 @@ namespace contour
             return false;
         }
 
-        const auto& otherArc = static_cast<const ArcSegment&>(other);
-        return m_center.isEqual(otherArc.m_center, epsilon) &&
-               geometry::isEqual(m_radius, otherArc.m_radius, epsilon) &&
-               geometry::isEqual(m_startAngle, otherArc.m_startAngle, epsilon) &&
-               geometry::isEqual(m_endAngle, otherArc.m_endAngle, epsilon) &&
-               m_clockwise == otherArc.m_clockwise;
+        try {
+            const auto& otherArc = dynamic_cast<const ArcSegment&>(other);
+            return m_center.isEqual(otherArc.m_center, epsilon) &&
+                   geometry::isEqual(m_radius, otherArc.m_radius, epsilon) &&
+                   geometry::isEqual(m_startAngle, otherArc.m_startAngle, epsilon) &&
+                   geometry::isEqual(m_endAngle, otherArc.m_endAngle, epsilon) &&
+                   m_clockwise == otherArc.m_clockwise;
+        } catch (const std::bad_cast& e) {
+            std::cerr << "Failed to cast to ArcSegment: " << e.what() << std::endl;
+            return false;
+        }
     }
 
     double ArcSegment::getAngleSpan() const
     {
+        // Validate angles
+        if (std::isnan(m_startAngle) || std::isnan(m_endAngle)) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+        
         double span;
         if (m_clockwise)
         {
@@ -159,6 +252,12 @@ namespace contour
                 span = m_endAngle + (2.0 * geometry::PI - m_startAngle);
             }
         }
+        
+        // Check for NaN result
+        if (std::isnan(span)) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+        
         return span;
     }
 
@@ -167,6 +266,14 @@ namespace contour
         if (t < 0.0 || t > 1.0)
         {
             throw std::invalid_argument("ArcSegment::getPointAt: t must be in range [0,1]");
+        }
+
+        // Validate arc parameters
+        if (std::isnan(m_center.x) || std::isnan(m_center.y) || 
+            std::isnan(m_radius) || m_radius <= 0 ||
+            std::isnan(m_startAngle) || std::isnan(m_endAngle)) {
+            return geometry::Point2D(std::numeric_limits<double>::quiet_NaN(), 
+                                   std::numeric_limits<double>::quiet_NaN());
         }
 
         double angle;
@@ -184,14 +291,35 @@ namespace contour
 
     geometry::Point2D ArcSegment::pointFromAngle(double angle) const
     {
+        // Validate inputs
+        if (std::isnan(angle) || std::isnan(m_center.x) || std::isnan(m_center.y) || 
+            std::isnan(m_radius) || m_radius <= 0) {
+            return geometry::Point2D(std::numeric_limits<double>::quiet_NaN(), 
+                                   std::numeric_limits<double>::quiet_NaN());
+        }
+        
+        double cosAngle = std::cos(angle);
+        double sinAngle = std::sin(angle);
+        
+        // Check for NaN results from trig functions
+        if (std::isnan(cosAngle) || std::isnan(sinAngle)) {
+            return geometry::Point2D(std::numeric_limits<double>::quiet_NaN(), 
+                                   std::numeric_limits<double>::quiet_NaN());
+        }
+        
         return geometry::Point2D(
-            m_center.x + m_radius * std::cos(angle),
-            m_center.y + m_radius * std::sin(angle)
+            m_center.x + m_radius * cosAngle,
+            m_center.y + m_radius * sinAngle
         );
     }
 
     double ArcSegment::normalizeAngle(double angle) const
     {
+        // Check for NaN input
+        if (std::isnan(angle)) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+        
         while (angle < 0.0)
         {
             angle += 2.0 * geometry::PI;

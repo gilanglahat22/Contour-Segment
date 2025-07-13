@@ -65,6 +65,10 @@ namespace contour
     }
 }
 
+namespace contour {
+    Contour makePolylineContour(const std::vector<geometry::Point2D>& points);
+}
+
 // Template implementations (must be in header for template instantiation)
 namespace contour::utilities
 {

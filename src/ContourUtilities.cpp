@@ -1,4 +1,5 @@
 #include "../include/ContourUtilities.h"
+#include "../include/Contour.h"
 #include <stdexcept>
 #include <algorithm>
 #include <cmath>
@@ -288,3 +289,16 @@ namespace contour::utilities
         return sum > 0.0;
     }
 } 
+
+namespace contour {
+
+Contour makePolylineContour(const std::vector<geometry::Point2D>& points) {
+    Contour contour;
+    if (points.size() < 2) return contour;
+    for (size_t i = 1; i < points.size(); ++i) {
+        contour.addSegment(createLineSegment(points[i-1], points[i]));
+    }
+    return contour;
+}
+
+} // namespace contour 

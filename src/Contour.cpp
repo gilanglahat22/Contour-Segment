@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include <utility>
+#include <string> // Added for std::to_string
 
 namespace contour
 {
@@ -71,12 +72,24 @@ namespace contour
     // Access methods
     Segment& Contour::operator[](size_type index)
     {
+        if (index >= m_segments.size()) {
+            throw std::out_of_range("Contour::operator[]: index out of range");
+        }
+        if (!m_segments[index]) {
+            throw std::runtime_error("Contour::operator[]: null segment at index " + std::to_string(index));
+        }
         invalidateCache(); // Non-const access might modify the segment
         return *m_segments[index];
     }
 
     const Segment& Contour::operator[](size_type index) const
     {
+        if (index >= m_segments.size()) {
+            throw std::out_of_range("Contour::operator[]: index out of range");
+        }
+        if (!m_segments[index]) {
+            throw std::runtime_error("Contour::operator[]: null segment at index " + std::to_string(index));
+        }
         return *m_segments[index];
     }
 
@@ -85,6 +98,9 @@ namespace contour
         if (index >= m_segments.size())
         {
             throw std::out_of_range("Contour::at: index out of range");
+        }
+        if (!m_segments[index]) {
+            throw std::runtime_error("Contour::at: null segment at index " + std::to_string(index));
         }
         invalidateCache(); // Non-const access might modify the segment
         return *m_segments[index];
@@ -95,6 +111,9 @@ namespace contour
         if (index >= m_segments.size())
         {
             throw std::out_of_range("Contour::at: index out of range");
+        }
+        if (!m_segments[index]) {
+            throw std::runtime_error("Contour::at: null segment at index " + std::to_string(index));
         }
         return *m_segments[index];
     }
