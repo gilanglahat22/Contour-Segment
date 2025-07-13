@@ -16,6 +16,9 @@
 #include <QLabel>
 #include <QSpinBox>
 #include <QPushButton>
+#include <QGroupBox>
+#include <QLineEdit>
+#include <QCheckBox>
 
 class MainWindow : public QMainWindow
 {
@@ -34,39 +37,57 @@ private slots:
     void onToggleSnap();
     void onAbout();
     void onContourModified();
-    void onEditModeChanged(int index);
-    void onColorButtonClicked();
-    void onThicknessChanged(int value);
-    void onSegmentSelected();
-    void onApplySettingsClicked(); // Tambahan slot untuk tombol Apply
+    // Semua operasi edit hanya dari Segment Management
+    void onAddSegmentClicked();
+    void onInsertSegmentClicked();
+    void onRemoveSegmentClicked();
+    void onUpdateSegmentClicked();
+    void onSegmentTypeChanged(int index);
+    void onInsertPositionChanged(int value);
+    void onSegmentSelectChanged(int value);
 
 private:
     void setupUI();
     void setupMenuBar();
     void setupToolBar();
     void setupStatusBar();
-    void setupEditPanel();
+    void setupSegmentManagementPanel();
     void createActions();
     void connectSignals();
-    void updateEditPanel();
+    void updateSegmentManagementPanel();
+    void updateValidationStatus();
+    void fillFormWithSegment(int index);
 
     ContourScene* m_scene;
     QGraphicsView* m_view;
     QToolBar* m_toolBar;
     QStatusBar* m_statusBar;
-    QWidget* m_editPanel;
+    QWidget* m_segmentManagementPanel;
     
-    // Edit controls
-    QComboBox* m_editModeCombo;
-    QComboBox* m_segmentCombo;
-    QPushButton* m_colorButton;
-    QSlider* m_thicknessSlider;
-    QSpinBox* m_thicknessSpinBox;
-    QLabel* m_colorLabel;
-    QLabel* m_thicknessLabel;
-    QPushButton* m_applyButton; // Tambahan tombol Apply
-    QColor m_pendingColor; // Tambahan untuk simpan warna sementara
-    int m_pendingThickness; // Tambahan untuk simpan thickness sementara
+    // Segment management controls
+    QComboBox* m_segmentTypeCombo;
+    QSpinBox* m_insertPositionSpinBox;
+    QPushButton* m_addSegmentButton;
+    QPushButton* m_insertSegmentButton;
+    QPushButton* m_removeSegmentButton;
+    QPushButton* m_updateSegmentButton;
+    QLabel* m_validationStatusLabel;
+    QLabel* m_segmentCountLabel;
+    QComboBox* m_segmentSelectCombo;
+    
+    // Line segment inputs
+    QLineEdit* m_lineStartXEdit;
+    QLineEdit* m_lineStartYEdit;
+    QLineEdit* m_lineEndXEdit;
+    QLineEdit* m_lineEndYEdit;
+    
+    // Arc segment inputs
+    QLineEdit* m_arcCenterXEdit;
+    QLineEdit* m_arcCenterYEdit;
+    QLineEdit* m_arcRadiusEdit;
+    QLineEdit* m_arcStartAngleEdit;
+    QLineEdit* m_arcEndAngleEdit;
+    QCheckBox* m_arcClockwiseCheck;
     
     // Actions
     QAction* m_newAction;
@@ -76,11 +97,4 @@ private:
     QAction* m_gridAction;
     QAction* m_snapAction;
     QAction* m_aboutAction;
-    
-    // Current selection
-    size_t m_currentSegmentIndex;
-
-    // Proteksi recursion signal/slot
-    bool m_isHandlingContourModified = false;
-    bool m_isUserEditingPanel = false;
 }; 

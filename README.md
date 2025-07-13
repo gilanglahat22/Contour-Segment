@@ -7,7 +7,8 @@ A contour editor application for creating and manipulating geometric contours us
 - **Interactive Drawing**: Click and drag to draw line segments
 - **Grid System**: Optional grid with snap-to-grid functionality
 - **Zoom & Pan**: Ctrl+Wheel for zoom, Alt+Left Click for pan
-- **Contour Validation**: Automatic validation of contour integrity
+- **Contour Validation**: Automatic validation of contour integrity with caching
+- **Segment Management**: Add, insert, and remove contour segments through GUI
 - **Modern GUI**: Clean interface with menu bar, toolbar, and status bar
 
 ## Prerequisites
@@ -48,6 +49,39 @@ setup_env.bat
 2. **Draw segments**: Click and drag to create line segments
 3. **Grid snapping**: Enable "Snap to Grid" for precise drawing
 4. **View grid**: Toggle "Show Grid" to see the grid
+
+### Segment Management
+
+The application now includes a dedicated segment management panel that allows you to:
+
+1. **Add Segments**: 
+   - Select segment type (Line or Arc)
+   - Enter coordinates for line segments (start/end points)
+   - Enter parameters for arc segments (center, radius, angles)
+   - Click "Add Segment" to append to the contour
+
+2. **Insert Segments**:
+   - Set the insertion position using the position spinner
+   - Enter segment parameters as above
+   - Click "Insert Segment" to insert at the specified position
+
+3. **Remove Segments**:
+   - Set the position of the segment to remove
+   - Click "Remove Segment" to delete the segment at that position
+
+4. **Validation Status**:
+   - Real-time display of contour validity status
+   - Shows whether the contour is valid and closed
+   - Color-coded status indicators (green=valid, yellow=valid but open, red=invalid)
+
+### Contour Validation
+
+The application implements intelligent contour validation with caching:
+
+- **Sequential Connection**: All segments must be connected end-to-begin (within epsilon tolerance)
+- **Caching**: Validation results are cached to avoid recalculation
+- **Real-time Updates**: Validation status updates automatically when segments are modified
+- **Visual Feedback**: Status bar and validation panel show current contour state
 
 ### Navigation
 

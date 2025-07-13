@@ -140,6 +140,55 @@ void testContour(TestSuite& suite)
     suite.runTest("Contour iteration", segmentCount == 4);
 }
 
+// Test segment management functionality
+void testSegmentManagement(TestSuite& suite)
+{
+    std::cout << "\n=== Testing Segment Management ===" << std::endl;
+    
+    // Test adding segments
+    Contour contour;
+    contour.addSegment(createLineSegment(Point2D(0.0, 0.0), Point2D(1.0, 0.0)));
+    suite.runTest("Add first segment", contour.size() == 1 && contour.isValid());
+    
+    contour.addSegment(createLineSegment(Point2D(1.0, 0.0), Point2D(1.0, 1.0)));
+    suite.runTest("Add second segment", contour.size() == 2 && contour.isValid());
+    
+    // Test inserting segments in the middle
+    contour.insertSegment(1, createLineSegment(Point2D(1.0, 0.0), Point2D(0.5, 0.5)));
+    suite.runTest("Insert segment in middle", contour.size() == 3);
+    
+    // Test that insertion breaks validity (segments no longer connected)
+    suite.runTest("Insertion breaks validity", !contour.isValid());
+    
+    // Test removing segments
+    contour.removeSegment(1);
+    suite.runTest("Remove segment", contour.size() == 2 && contour.isValid());
+    
+    // Test replacing segments
+    contour.replaceSegment(1, createLineSegment(Point2D(1.0, 0.0), Point2D(1.0, 1.0)));
+    suite.runTest("Replace segment", contour.size() == 2 && contour.isValid());
+    
+    // Test inserting at beginning
+    contour.insertSegment(0, createLineSegment(Point2D(-1.0, 0.0), Point2D(0.0, 0.0)));
+    suite.runTest("Insert at beginning", contour.size() == 3 && contour.isValid());
+    
+    // Test inserting at end
+    contour.insertSegment(3, createLineSegment(Point2D(1.0, 1.0), Point2D(0.0, 1.0)));
+    suite.runTest("Insert at end", contour.size() == 4);
+    
+    // Test clearing
+    contour.clear();
+    suite.runTest("Clear contour", contour.size() == 0 && contour.empty());
+    
+    // Test arc segment management
+    Contour arcContour;
+    arcContour.addSegment(createArcSegment(Point2D(0.0, 0.0), 1.0, 0.0, PI/2, false));
+    suite.runTest("Add arc segment", arcContour.size() == 1);
+    
+    arcContour.addSegment(createLineSegment(Point2D(0.0, 1.0), Point2D(1.0, 1.0)));
+    suite.runTest("Add line after arc", arcContour.size() == 2 && arcContour.isValid());
+}
+
 // Test utility functions
 void testUtilities(TestSuite& suite)
 {
@@ -407,6 +456,7 @@ void runAllTests()
         testGeometry(suite);
         testSegments(suite);
         testContour(suite);
+        testSegmentManagement(suite);
         testUtilities(suite);
         testVisualization(suite);
         testAsyncContourSearch(suite);

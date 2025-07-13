@@ -18,7 +18,15 @@
 #include <QDir>
 #include <QColorDialog>
 #include <QSignalBlocker>
+#include <QGroupBox>
+#include <QLineEdit>
+#include <QCheckBox>
+#include <QFormLayout>
 #include <iostream>
+#include <cmath>
+#define _USE_MATH_DEFINES
+#include <math.h>
+#include "Segment.h"
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -26,14 +34,26 @@ MainWindow::MainWindow(QWidget* parent)
     , m_view(nullptr)
     , m_toolBar(nullptr)
     , m_statusBar(nullptr)
-    , m_editPanel(nullptr)
-    , m_editModeCombo(nullptr)
-    , m_segmentCombo(nullptr)
-    , m_colorButton(nullptr)
-    , m_thicknessSlider(nullptr)
-    , m_thicknessSpinBox(nullptr)
-    , m_colorLabel(nullptr)
-    , m_thicknessLabel(nullptr)
+    , m_segmentManagementPanel(nullptr)
+    , m_segmentTypeCombo(nullptr)
+    , m_insertPositionSpinBox(nullptr)
+    , m_addSegmentButton(nullptr)
+    , m_insertSegmentButton(nullptr)
+    , m_removeSegmentButton(nullptr)
+    , m_updateSegmentButton(nullptr)
+    , m_validationStatusLabel(nullptr)
+    , m_segmentCountLabel(nullptr)
+    , m_segmentSelectCombo(nullptr)
+    , m_lineStartXEdit(nullptr)
+    , m_lineStartYEdit(nullptr)
+    , m_lineEndXEdit(nullptr)
+    , m_lineEndYEdit(nullptr)
+    , m_arcCenterXEdit(nullptr)
+    , m_arcCenterYEdit(nullptr)
+    , m_arcRadiusEdit(nullptr)
+    , m_arcStartAngleEdit(nullptr)
+    , m_arcEndAngleEdit(nullptr)
+    , m_arcClockwiseCheck(nullptr)
     , m_newAction(nullptr)
     , m_openAction(nullptr)
     , m_saveAction(nullptr)
@@ -41,37 +61,33 @@ MainWindow::MainWindow(QWidget* parent)
     , m_gridAction(nullptr)
     , m_snapAction(nullptr)
     , m_aboutAction(nullptr)
-    , m_currentSegmentIndex(0)
-    , m_isHandlingContourModified(false)
-    , m_isUserEditingPanel(false)
 {
     setupUI();
     createActions();
     setupMenuBar();
     setupToolBar();
     setupStatusBar();
-    setupEditPanel();
-    std::cout << "[TRACE] m_editModeCombo address (after setupEditPanel): " << m_editModeCombo << std::endl;
+    setupSegmentManagementPanel();
     
     // Verify QComboBox is properly created before connecting signals
-    if (m_editModeCombo) {
+    if (m_segmentSelectCombo) {
         std::cout << "[TRACE] QComboBox is valid, proceeding with signal connection..." << std::endl;
-        std::cout << "[TRACE] QComboBox current index: " << m_editModeCombo->currentIndex() << std::endl;
-        std::cout << "[TRACE] QComboBox item count: " << m_editModeCombo->count() << std::endl;
+        std::cout << "[TRACE] QComboBox current index: " << m_segmentSelectCombo->currentIndex() << std::endl;
+        std::cout << "[TRACE] QComboBox item count: " << m_segmentSelectCombo->count() << std::endl;
     } else {
-        std::cout << "[ERROR] QComboBox is null after setupEditPanel!" << std::endl;
+        std::cout << "[ERROR] QComboBox is null after setupSegmentManagementPanel!" << std::endl;
     }
     
     connectSignals();
-    std::cout << "[TRACE] m_editModeCombo address (after connectSignals): " << m_editModeCombo << std::endl;
+    std::cout << "[TRACE] m_segmentSelectCombo address (after connectSignals): " << m_segmentSelectCombo << std::endl;
     
-    setWindowTitle("ContourSegment - Contour Editor with Vertex Editing");
-    resize(1000, 700);
+    setWindowTitle("ContourSegment - Contour Editor with Segment Management");
+    resize(1200, 800);
 
     // Tambahkan dark style agar menu, panel, dan konten kontras
     QString darkStyle = R"(
         QMainWindow, QWidget, QMenuBar, QMenu, QToolBar, QStatusBar {
-            background-color: #232629;
+            background-color:rgb(2, 72, 143);
             color: #f0f0f0;
         }
         QMenuBar, QMenu {
@@ -85,7 +101,7 @@ MainWindow::MainWindow(QWidget* parent)
             background-color: #232629;
             color: #f0f0f0;
         }
-        QLabel, QComboBox, QSpinBox, QSlider, QPushButton {
+        QLabel, QComboBox, QSpinBox, QSlider, QPushButton, QLineEdit, QCheckBox {
             background-color: #232629;
             color: #f0f0f0;
             border: 1px solid #444;
@@ -118,6 +134,18 @@ MainWindow::MainWindow(QWidget* parent)
             margin: -4px 0;
             border-radius: 7px;
         }
+        QGroupBox {
+            font-weight: bold;
+            border: 2px solid #444;
+            border-radius: 5px;
+            margin-top: 1ex;
+            padding-top: 10px;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            left: 10px;
+            padding: 0 5px 0 5px;
+        }
     )";
     qApp->setStyleSheet(darkStyle);
 }
@@ -149,12 +177,12 @@ void MainWindow::setupUI()
     
     leftLayout->addWidget(m_view);
     
-    // Create right panel for edit controls
-    setupEditPanel();
+    // Create right panels for controls
+    setupSegmentManagementPanel();
     
     // Add panels to main layout
-    mainLayout->addLayout(leftLayout, 1); // Scene takes most space
-    mainLayout->addWidget(m_editPanel, 0); // Edit panel takes minimum space
+    mainLayout->addLayout(leftLayout, 2); // Scene takes most space
+    mainLayout->addWidget(m_segmentManagementPanel, 0); // Segment management panel takes minimum space
 }
 
 void MainWindow::createActions()
@@ -239,116 +267,121 @@ void MainWindow::setupStatusBar()
     m_statusBar->showMessage("Ready");
 }
 
-void MainWindow::setupEditPanel()
+void MainWindow::setupSegmentManagementPanel()
 {
-    // Create edit panel
-    m_editPanel = new QWidget(this);
-    m_editPanel->setMinimumWidth(200);
-    m_editPanel->setMaximumWidth(200);
-    // Style khusus panel kanan agar background gelap dan font putih
-    m_editPanel->setStyleSheet(R"(
-        QWidget {
-            background-color: #232629;
-            color: #f0f0f0;
+    m_segmentManagementPanel = new QGroupBox("Segment Management", this);
+    m_segmentManagementPanel->setMinimumWidth(300);
+    m_segmentManagementPanel->setMaximumWidth(300);
+    m_segmentManagementPanel->setStyleSheet(R"(
+        QGroupBox {
+            font-weight: bold;
+            border: 2px solid #444;
+            border-radius: 5px;
+            margin-top: 1ex;
+            padding-top: 10px;
         }
-        QLabel, QComboBox, QSpinBox, QSlider, QPushButton {
-            background-color: #232629;
-            color: #f0f0f0;
-            border: 1px solid #444;
-        }
-        QPushButton {
-            background-color: #444;
-            color: #f0f0f0;
-            border-radius: 4px;
-            padding: 4px 8px;
-        }
-        QPushButton:disabled {
-            background-color: #333;
-            color: #888;
-        }
-        QSlider::groove:horizontal {
-            background: #444;
-            height: 6px;
-            border-radius: 3px;
-        }
-        QSlider::handle:horizontal {
-            background: #f0f0f0;
-            border: 1px solid #888;
-            width: 14px;
-            margin: -4px 0;
-            border-radius: 7px;
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            left: 10px;
+            padding: 0 5px 0 5px;
         }
     )");
 
-    // Create layout for edit panel
-    QVBoxLayout* editPanelLayout = new QVBoxLayout(m_editPanel);
-    editPanelLayout->setAlignment(Qt::AlignTop);
-    editPanelLayout->setContentsMargins(5, 5, 5, 5);
+    QVBoxLayout* segmentManagementLayout = new QVBoxLayout(m_segmentManagementPanel);
+    segmentManagementLayout->setAlignment(Qt::AlignTop);
+    segmentManagementLayout->setContentsMargins(10, 10, 10, 10);
 
-    // Edit Mode Combo Box - FIXED: Ensure proper creation and setup
-    m_editModeCombo = new QComboBox(m_editPanel);
-    std::cout << "[TRACE] setupEditPanel: Created m_editModeCombo at address: " << m_editModeCombo << std::endl;
-    
-    // Add items with clear labels
-    m_editModeCombo->addItem("Select");
-    m_editModeCombo->addItem("Draw Line");
-    m_editModeCombo->addItem("Draw Arc");
-    m_editModeCombo->addItem("Edit Vertex");
-    
-    // Set initial index
-    m_editModeCombo->setCurrentIndex(0);
-    
-    // Make sure it's visible and enabled
-    m_editModeCombo->setVisible(true);
-    m_editModeCombo->setEnabled(true);
-    
-    // Add to layout
-    editPanelLayout->addWidget(m_editModeCombo);
-    
-    // Test if we can access the combo box
-    std::cout << "[TRACE] setupEditPanel: m_editModeCombo current index: " << m_editModeCombo->currentIndex() << std::endl;
-    std::cout << "[TRACE] setupEditPanel: m_editModeCombo item count: " << m_editModeCombo->count() << std::endl;
+    // Segment Type Combo Box
+    m_segmentTypeCombo = new QComboBox(m_segmentManagementPanel);
+    m_segmentTypeCombo->addItem("Line");
+    m_segmentTypeCombo->addItem("Arc");
+    segmentManagementLayout->addWidget(m_segmentTypeCombo);
 
-    // Segment Combo Box
-    m_segmentCombo = new QComboBox(m_editPanel);
-    editPanelLayout->addWidget(m_segmentCombo);
+    // Insert Position Spin Box
+    m_insertPositionSpinBox = new QSpinBox(m_segmentManagementPanel);
+    m_insertPositionSpinBox->setMinimum(0);
+    m_insertPositionSpinBox->setMaximum(100); // Arbitrary large number for now
+    segmentManagementLayout->addWidget(m_insertPositionSpinBox);
 
-    // Color Button
-    m_colorButton = new QPushButton("Color", m_editPanel);
-    m_colorButton->setStyleSheet("QPushButton { background-color: #e0e0e0; }");
-    editPanelLayout->addWidget(m_colorButton);
+    // Add Segment Button
+    m_addSegmentButton = new QPushButton("Add Segment", m_segmentManagementPanel);
+    segmentManagementLayout->addWidget(m_addSegmentButton);
 
-    // Thickness Slider
-    m_thicknessSlider = new QSlider(Qt::Horizontal, m_editPanel);
-    m_thicknessSlider->setMinimum(1);
-    m_thicknessSlider->setMaximum(10);
-    m_thicknessSlider->setValue(5);
-    editPanelLayout->addWidget(m_thicknessSlider);
+    // Insert Segment Button
+    m_insertSegmentButton = new QPushButton("Insert Segment", m_segmentManagementPanel);
+    segmentManagementLayout->addWidget(m_insertSegmentButton);
 
-    // Thickness Spin Box
-    m_thicknessSpinBox = new QSpinBox(m_editPanel);
-    m_thicknessSpinBox->setMinimum(1);
-    m_thicknessSpinBox->setMaximum(10);
-    m_thicknessSpinBox->setValue(5);
-    editPanelLayout->addWidget(m_thicknessSpinBox);
+    // Remove Segment Button
+    m_removeSegmentButton = new QPushButton("Remove Segment", m_segmentManagementPanel);
+    segmentManagementLayout->addWidget(m_removeSegmentButton);
 
-    // Color Label
-    m_colorLabel = new QLabel("Color:", m_editPanel);
-    editPanelLayout->addWidget(m_colorLabel);
+    // Validation Status Label
+    m_validationStatusLabel = new QLabel("Validation Status: N/A", m_segmentManagementPanel);
+    segmentManagementLayout->addWidget(m_validationStatusLabel);
 
-    // Thickness Label
-    m_thicknessLabel = new QLabel("Thickness:", m_editPanel);
-    editPanelLayout->addWidget(m_thicknessLabel);
+    // Segment Count Label
+    m_segmentCountLabel = new QLabel("Total Segments: 0", m_segmentManagementPanel);
+    segmentManagementLayout->addWidget(m_segmentCountLabel);
 
-    // Tambah tombol Apply/Submit
-    m_applyButton = new QPushButton("Apply", m_editPanel);
-    m_applyButton->setStyleSheet("QPushButton { background-color: #2d8cff; color: #fff; border-radius: 4px; padding: 4px 8px; } QPushButton:disabled { background-color: #333; color: #888; }");
-    editPanelLayout->addWidget(m_applyButton);
+    // Line Segment Form
+    QGroupBox* lineSegmentGroup = new QGroupBox("Line Segment", m_segmentManagementPanel);
+    QFormLayout* lineSegmentLayout = new QFormLayout(lineSegmentGroup);
+    lineSegmentLayout->setContentsMargins(10, 5, 10, 5);
 
-    // Add edit panel to the main layout
-    // layout->addWidget(m_editPanel); // This line is removed as per the new_code
-    m_pendingColor = QColor(Qt::white);
-    m_pendingThickness = 1;
+    m_lineStartXEdit = new QLineEdit(lineSegmentGroup);
+    m_lineStartXEdit->setPlaceholderText("X");
+    lineSegmentLayout->addRow("Start X:", m_lineStartXEdit);
+
+    m_lineStartYEdit = new QLineEdit(lineSegmentGroup);
+    m_lineStartYEdit->setPlaceholderText("Y");
+    lineSegmentLayout->addRow("Start Y:", m_lineStartYEdit);
+
+    m_lineEndXEdit = new QLineEdit(lineSegmentGroup);
+    m_lineEndXEdit->setPlaceholderText("X");
+    lineSegmentLayout->addRow("End X:", m_lineEndXEdit);
+
+    m_lineEndYEdit = new QLineEdit(lineSegmentGroup);
+    m_lineEndYEdit->setPlaceholderText("Y");
+    lineSegmentLayout->addRow("End Y:", m_lineEndYEdit);
+
+    segmentManagementLayout->addWidget(lineSegmentGroup);
+
+    // Arc Segment Form
+    QGroupBox* arcSegmentGroup = new QGroupBox("Arc Segment", m_segmentManagementPanel);
+    QFormLayout* arcSegmentLayout = new QFormLayout(arcSegmentGroup);
+    arcSegmentLayout->setContentsMargins(10, 5, 10, 5);
+
+    m_arcCenterXEdit = new QLineEdit(arcSegmentGroup);
+    m_arcCenterXEdit->setPlaceholderText("X");
+    arcSegmentLayout->addRow("Center X:", m_arcCenterXEdit);
+
+    m_arcCenterYEdit = new QLineEdit(arcSegmentGroup);
+    m_arcCenterYEdit->setPlaceholderText("Y");
+    arcSegmentLayout->addRow("Center Y:", m_arcCenterYEdit);
+
+    m_arcRadiusEdit = new QLineEdit(arcSegmentGroup);
+    m_arcRadiusEdit->setPlaceholderText("Radius");
+    arcSegmentLayout->addRow("Radius:", m_arcRadiusEdit);
+
+    m_arcStartAngleEdit = new QLineEdit(arcSegmentGroup);
+    m_arcStartAngleEdit->setPlaceholderText("Start Angle (deg)");
+    arcSegmentLayout->addRow("Start Angle:", m_arcStartAngleEdit);
+
+    m_arcEndAngleEdit = new QLineEdit(arcSegmentGroup);
+    m_arcEndAngleEdit->setPlaceholderText("End Angle (deg)");
+    arcSegmentLayout->addRow("End Angle:", m_arcEndAngleEdit);
+
+    m_arcClockwiseCheck = new QCheckBox("Clockwise", arcSegmentGroup);
+    arcSegmentLayout->addRow("Clockwise:", m_arcClockwiseCheck);
+
+    segmentManagementLayout->addWidget(arcSegmentGroup);
+
+    // Combo box pilih segmen
+    m_segmentSelectCombo = new QComboBox(m_segmentManagementPanel);
+    segmentManagementLayout->addWidget(m_segmentSelectCombo);
+    // Tombol update segmen
+    m_updateSegmentButton = new QPushButton("Update Segment", m_segmentManagementPanel);
+    segmentManagementLayout->addWidget(m_updateSegmentButton);
 }
 
 void MainWindow::connectSignals()
@@ -365,31 +398,28 @@ void MainWindow::connectSignals()
     // Connect scene signals
     connect(m_scene, &ContourScene::contourModified, this, &MainWindow::onContourModified);
     
-    // Connect edit controls - FIXED: Use direct signal connection
-    if (m_editModeCombo) {
-        bool ok = connect(m_editModeCombo, SIGNAL(currentIndexChanged(int)), 
-                         this, SLOT(onEditModeChanged(int)));
-        std::cout << "[TRACE] connect m_editModeCombo to onEditModeChanged: " << (ok ? "OK" : "FAIL") << " address: " << m_editModeCombo << std::endl;
-        
-        // Also connect to activated signal as backup
-        bool ok2 = connect(m_editModeCombo, SIGNAL(activated(int)), 
-                          this, SLOT(onEditModeChanged(int)));
-        std::cout << "[TRACE] connect m_editModeCombo activated signal: " << (ok2 ? "OK" : "FAIL") << std::endl;
-        
-        // Test the connection by manually calling the slot
-        std::cout << "[TRACE] Testing slot connection..." << std::endl;
-        onEditModeChanged(m_editModeCombo->currentIndex());
-    } else {
-        std::cout << "[ERROR] m_editModeCombo is null in connectSignals!" << std::endl;
-    }
-    
-    connect(m_segmentCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &MainWindow::onSegmentSelected);
-    connect(m_colorButton, &QPushButton::clicked, this, &MainWindow::onColorButtonClicked);
-    connect(m_thicknessSlider, &QSlider::valueChanged, this, &MainWindow::onThicknessChanged);
-    connect(m_thicknessSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
-            this, &MainWindow::onThicknessChanged);
-    connect(m_applyButton, &QPushButton::clicked, this, &MainWindow::onApplySettingsClicked);
+    // Connect segment management panel signals
+    connect(m_addSegmentButton, &QPushButton::clicked, this, &MainWindow::onAddSegmentClicked);
+    connect(m_insertSegmentButton, &QPushButton::clicked, this, &MainWindow::onInsertSegmentClicked);
+    connect(m_removeSegmentButton, &QPushButton::clicked, this, &MainWindow::onRemoveSegmentClicked);
+    connect(m_segmentTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int idx){
+        // Enable/disable form sesuai tipe
+        bool isLine = (idx == 0);
+        m_lineStartXEdit->setEnabled(isLine);
+        m_lineStartYEdit->setEnabled(isLine);
+        m_lineEndXEdit->setEnabled(isLine);
+        m_lineEndYEdit->setEnabled(isLine);
+        m_arcCenterXEdit->setEnabled(!isLine);
+        m_arcCenterYEdit->setEnabled(!isLine);
+        m_arcRadiusEdit->setEnabled(!isLine);
+        m_arcStartAngleEdit->setEnabled(!isLine);
+        m_arcEndAngleEdit->setEnabled(!isLine);
+        m_arcClockwiseCheck->setEnabled(!isLine);
+    });
+    connect(m_insertPositionSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, &MainWindow::onInsertPositionChanged);
+    connect(m_segmentSelectCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::onSegmentSelectChanged);
+    connect(m_updateSegmentButton, &QPushButton::clicked, this, &MainWindow::onUpdateSegmentClicked);
 }
 
 void MainWindow::onNewContour()
@@ -465,175 +495,211 @@ void MainWindow::onAbout()
 
 void MainWindow::onContourModified()
 {
-    if (m_isHandlingContourModified) return;
-    m_isHandlingContourModified = true;
-
     QString status = QString("Segments: %1 | Valid: %2 | Closed: %3")
         .arg(m_scene->getSegmentCount())
         .arg(m_scene->isValid() ? "Yes" : "No")
         .arg(m_scene->isClosed() ? "Yes" : "No");
     
     m_statusBar->showMessage(status);
-    updateEditPanel();
-
-    m_isHandlingContourModified = false;
+    updateSegmentManagementPanel();
 }
 
-void MainWindow::onEditModeChanged(int index)
+void MainWindow::onSegmentTypeChanged(int index)
 {
-    std::cout << "[TRACE] onEditModeChanged called! this=" << this << " m_editModeCombo=" << m_editModeCombo << " index=" << index << std::endl;
-    
-    // Validate scene exists
-    if (!m_scene) {
-        std::cout << "[ERROR] m_scene is null in onEditModeChanged!" << std::endl;
-        return;
-    }
-    
-    // Validate index
-    if (index < 0 || index > 3) {
-        std::cout << "[ERROR] Invalid index in onEditModeChanged: " << index << std::endl;
-        return;
-    }
-    
-    switch (index) {
-        case 0: // Select
-            std::cout << "[TRACE] Mode: Select (Draw/Line)" << std::endl;
-            m_scene->setEditMode(EditMode::Draw);
-            m_scene->setDrawingMode(DrawingMode::Line);
-            m_statusBar->showMessage("Select mode - click to select segments", 2000);
-            break;
-        case 1: // Draw Line
-            std::cout << "[TRACE] Mode: Draw Line" << std::endl;
-            m_scene->setEditMode(EditMode::Draw);
-            m_scene->setDrawingMode(DrawingMode::Line);
-            m_statusBar->showMessage("Draw mode - click and drag to draw lines", 2000);
-            break;
-        case 2: // Draw Arc
-            std::cout << "[TRACE] Mode: Draw Arc" << std::endl;
-            m_scene->setEditMode(EditMode::Draw);
-            m_scene->setDrawingMode(DrawingMode::Arc);
-            m_statusBar->showMessage("Arc mode - click center, lalu start, lalu drag ke end", 2000);
-            break;
-        case 3: // Edit Vertex
-            std::cout << "[TRACE] Mode: Edit Vertex" << std::endl;
-            m_scene->setEditMode(EditMode::Edit);
-            m_statusBar->showMessage("Edit mode - drag vertex markers to edit", 2000);
-            break;
-        default:
-            std::cout << "[ERROR] Unknown mode index: " << index << std::endl;
-            break;
-    }
-    
-    // Mode change completed - scene will update automatically when needed
-    std::cout << "[TRACE] onEditModeChanged completed for index: " << index << std::endl;
-}
-
-void MainWindow::onColorButtonClicked()
-{
-    QColor currentColor = m_pendingColor;
-    QColor newColor = QColorDialog::getColor(currentColor, this, "Select Color");
-    if (newColor.isValid()) {
-        m_pendingColor = newColor;
-        m_colorButton->setStyleSheet(QString("QPushButton { background-color: %1; } QPushButton:disabled { background-color: #333; color: #888; } ").arg(newColor.name()));
-        m_statusBar->showMessage(QString("Selected color %1").arg(newColor.name()), 2000);
-    }
-}
-
-void MainWindow::onThicknessChanged(int value)
-{
-    m_pendingThickness = value;
-    m_thicknessSlider->blockSignals(true);
-    m_thicknessSlider->setValue(value);
-    m_thicknessSlider->blockSignals(false);
-    m_thicknessSpinBox->blockSignals(true);
-    m_thicknessSpinBox->setValue(value);
-    m_thicknessSpinBox->blockSignals(false);
-    m_statusBar->showMessage(QString("Selected thickness %1").arg(value), 2000);
-}
-
-void MainWindow::updateEditPanel()
-{
-    static bool isUpdatingPanel = false;
-    if (isUpdatingPanel) return;
-    isUpdatingPanel = true;
-    m_isUserEditingPanel = false;
-
-    QSignalBlocker blocker(m_segmentCombo);
-    m_segmentCombo->clear();
+    // Update the insert position maximum based on current segment count
     size_t segmentCount = m_scene->getSegmentCount();
+    m_insertPositionSpinBox->setMaximum(static_cast<int>(segmentCount));
+    
+    // Update validation status
+    updateValidationStatus();
+}
+
+void MainWindow::onInsertPositionChanged(int value)
+{
+    // This slot can be used for additional validation or UI updates
+    // For now, just update the validation status
+    updateValidationStatus();
+}
+
+void MainWindow::updateSegmentManagementPanel()
+{
+    size_t segmentCount = m_scene->getSegmentCount();
+    m_segmentCountLabel->setText(QString("Total Segments: %1").arg(segmentCount));
+    m_insertPositionSpinBox->setMaximum(static_cast<int>(segmentCount));
+    m_segmentSelectCombo->clear();
     for (size_t i = 0; i < segmentCount; ++i) {
-        m_segmentCombo->addItem(QString("Segment %1").arg(i + 1));
+        m_segmentSelectCombo->addItem(QString("Segment %1").arg(i+1));
     }
-    int modeIndex = m_editModeCombo->currentIndex();
-    bool alwaysEnable = (modeIndex == 2 || modeIndex == 3); // Draw Arc, Edit Vertex
+    if (segmentCount > 0) fillFormWithSegment(0);
+    updateValidationStatus();
+    
+    // Update edit panel as well
+    // updateEditPanel(); // This line is removed as per the new_code
+}
 
-    // FIX: Jangan disable kontrol apapun pada mode Draw Arc/Edit Vertex
-    if (alwaysEnable) {
-        m_colorButton->setEnabled(true);
-        m_thicknessSlider->setEnabled(true);
-        m_thicknessSpinBox->setEnabled(true);
-        m_applyButton->setEnabled(true);
-    } else {
-        bool enableControls = (segmentCount > 0);
-        m_colorButton->setEnabled(enableControls);
-        m_thicknessSlider->setEnabled(enableControls);
-        m_thicknessSpinBox->setEnabled(enableControls);
-        m_applyButton->setEnabled(enableControls);
+void MainWindow::updateValidationStatus()
+{
+    if (!m_scene) {
+        m_validationStatusLabel->setText("Validation Status: N/A");
+        return;
     }
-
-    if (segmentCount > 0) {
-        m_segmentCombo->setCurrentIndex(static_cast<int>(m_currentSegmentIndex));
-        if (!m_isUserEditingPanel) {
-            QColor currentColor = m_scene->getSegmentColor(m_currentSegmentIndex);
-            m_pendingColor = currentColor;
-            m_colorButton->setStyleSheet(QString("QPushButton { background-color: %1; } QPushButton:disabled { background-color: #333; color: #888; } ").arg(currentColor.name()));
-            double thickness = m_scene->getSegmentThickness(m_currentSegmentIndex);
-            m_pendingThickness = static_cast<int>(thickness);
-            m_thicknessSlider->setValue(m_pendingThickness);
-            m_thicknessSpinBox->setValue(m_pendingThickness);
+    
+    bool isValid = m_scene->isValid();
+    bool isClosed = m_scene->isClosed();
+    
+    QString status;
+    if (isValid) {
+        if (isClosed) {
+            status = "Valid & Closed";
+            m_validationStatusLabel->setStyleSheet("QLabel { color: #00ff00; }"); // Green
+        } else {
+            status = "Valid (Open)";
+            m_validationStatusLabel->setStyleSheet("QLabel { color: #ffff00; }"); // Yellow
         }
     } else {
-        m_currentSegmentIndex = 0;
+        status = "Invalid";
+        m_validationStatusLabel->setStyleSheet("QLabel { color: #ff0000; }"); // Red
     }
-    m_isUserEditingPanel = true;
-    isUpdatingPanel = false;
+    
+    m_validationStatusLabel->setText(QString("Validation Status: %1").arg(status));
+} 
+
+void MainWindow::onSegmentSelectChanged(int index) {
+    fillFormWithSegment(index);
 }
 
-void MainWindow::onSegmentSelected()
-{
-    if (m_isHandlingContourModified) {
-        std::cout << "[TRACE] onSegmentSelected: Skipping due to contour modification in progress" << std::endl;
-        return;
+void MainWindow::onUpdateSegmentClicked() {
+    int idx = m_segmentSelectCombo->currentIndex();
+    if (idx < 0 || idx >= (int)m_scene->getSegmentCount()) return;
+    // Cek tipe segmen yang dipilih
+    auto& contour = m_scene->getContour();
+    auto& seg = contour[idx];
+    if (seg.getType() == contour::SegmentType::Line && m_segmentTypeCombo->currentIndex() == 0) {
+        bool ok1, ok2, ok3, ok4;
+        double startX = m_lineStartXEdit->text().toDouble(&ok1);
+        double startY = m_lineStartYEdit->text().toDouble(&ok2);
+        double endX = m_lineEndXEdit->text().toDouble(&ok3);
+        double endY = m_lineEndYEdit->text().toDouble(&ok4);
+        if (!ok1 || !ok2 || !ok3 || !ok4) return;
+        auto newSeg = contour::createLineSegment({startX, startY}, {endX, endY});
+        contour.replaceSegment(idx, std::move(newSeg));
+    } else if (seg.getType() == contour::SegmentType::Arc && m_segmentTypeCombo->currentIndex() == 1) {
+        bool ok1, ok2, ok3, ok4, ok5;
+        double cx = m_arcCenterXEdit->text().toDouble(&ok1);
+        double cy = m_arcCenterYEdit->text().toDouble(&ok2);
+        double r = m_arcRadiusEdit->text().toDouble(&ok3);
+        double sa = m_arcStartAngleEdit->text().toDouble(&ok4);
+        double ea = m_arcEndAngleEdit->text().toDouble(&ok5);
+        if (!ok1 || !ok2 || !ok3 || !ok4 || !ok5) return;
+        double saRad = sa * M_PI / 180.0;
+        double eaRad = ea * M_PI / 180.0;
+        bool cw = m_arcClockwiseCheck->isChecked();
+        auto newSeg = contour::createArcSegment({cx, cy}, r, saRad, eaRad, cw);
+        contour.replaceSegment(idx, std::move(newSeg));
     }
-    std::cout << "[TRACE] onSegmentSelected: Segment index changed to " << m_segmentCombo->currentIndex() << std::endl;
-    int index = m_segmentCombo->currentIndex();
-    if (index >= 0 && index < static_cast<int>(m_scene->getSegmentCount())) {
-        m_currentSegmentIndex = static_cast<size_t>(index);
-        // Update pending value dari segmen
-        QColor currentColor = m_scene->getSegmentColor(m_currentSegmentIndex);
-        m_pendingColor = currentColor;
-        m_colorButton->setStyleSheet(QString("QPushButton { background-color: %1; } QPushButton:disabled { background-color: #333; color: #888; } ").arg(currentColor.name()));
-        double thickness = m_scene->getSegmentThickness(m_currentSegmentIndex);
-        m_pendingThickness = static_cast<int>(thickness);
-        m_thicknessSlider->setValue(m_pendingThickness);
-        m_thicknessSpinBox->setValue(m_pendingThickness);
-    }
+    m_scene->updateScene();
+    updateSegmentManagementPanel();
+    m_segmentSelectCombo->setCurrentIndex(idx);
 }
 
-void MainWindow::onApplySettingsClicked()
-{
-    if (m_scene->getSegmentCount() == 0) {
-        m_statusBar->showMessage("No segment to apply settings.", 2000);
+void MainWindow::fillFormWithSegment(int index) {
+    if (index < 0 || index >= (int)m_scene->getSegmentCount()) {
+        m_lineStartXEdit->clear(); m_lineStartYEdit->clear(); m_lineEndXEdit->clear(); m_lineEndYEdit->clear();
+        m_arcCenterXEdit->clear(); m_arcCenterYEdit->clear(); m_arcRadiusEdit->clear(); m_arcStartAngleEdit->clear(); m_arcEndAngleEdit->clear();
+        m_arcClockwiseCheck->setChecked(false);
         return;
     }
-    if (m_currentSegmentIndex >= m_scene->getSegmentCount()) {
-        m_statusBar->showMessage("No segment selected to apply settings.", 2000);
-        return;
+    const auto& seg = m_scene->getContour()[index];
+    if (seg.getType() == contour::SegmentType::Line) {
+        m_segmentTypeCombo->setCurrentIndex(0);
+        const auto& line = static_cast<const contour::LineSegment&>(seg);
+        m_lineStartXEdit->setText(QString::number(line.getStartPoint().x));
+        m_lineStartYEdit->setText(QString::number(line.getStartPoint().y));
+        m_lineEndXEdit->setText(QString::number(line.getEndPoint().x));
+        m_lineEndYEdit->setText(QString::number(line.getEndPoint().y));
+    } else if (seg.getType() == contour::SegmentType::Arc) {
+        m_segmentTypeCombo->setCurrentIndex(1);
+        const auto& arc = static_cast<const contour::ArcSegment&>(seg);
+        m_arcCenterXEdit->setText(QString::number(arc.getCenter().x));
+        m_arcCenterYEdit->setText(QString::number(arc.getCenter().y));
+        m_arcRadiusEdit->setText(QString::number(arc.getRadius()));
+        m_arcStartAngleEdit->setText(QString::number(arc.getStartAngle() * 180.0 / M_PI));
+        m_arcEndAngleEdit->setText(QString::number(arc.getEndAngle() * 180.0 / M_PI));
+        m_arcClockwiseCheck->setChecked(arc.isClockwise());
     }
-    m_scene->setSegmentColor(m_currentSegmentIndex, m_pendingColor);
-    m_scene->setSegmentThickness(m_currentSegmentIndex, m_pendingThickness);
-    m_statusBar->showMessage(QString("Applied color %1 and thickness %2 to segment %3").arg(m_pendingColor.name()).arg(m_pendingThickness).arg(m_currentSegmentIndex), 2000);
-    // Setelah apply, update panel dari segmen (reset flag)
-    m_isUserEditingPanel = false;
-    updateEditPanel();
+} 
+
+void MainWindow::onAddSegmentClicked() {
+    if (m_segmentTypeCombo->currentIndex() == 0) { // Line
+        bool ok1, ok2, ok3, ok4;
+        double x1 = m_lineStartXEdit->text().toDouble(&ok1);
+        double y1 = m_lineStartYEdit->text().toDouble(&ok2);
+        double x2 = m_lineEndXEdit->text().toDouble(&ok3);
+        double y2 = m_lineEndYEdit->text().toDouble(&ok4);
+        if (!ok1 || !ok2 || !ok3 || !ok4) return;
+        if (geometry::Point2D(x1, y1).isEqual(geometry::Point2D(x2, y2), 1e-6)) return;
+        m_scene->addLineSegment({x1, y1}, {x2, y2});
+    } else { // Arc
+        bool ok1, ok2, ok3, ok4, ok5;
+        double cx = m_arcCenterXEdit->text().toDouble(&ok1);
+        double cy = m_arcCenterYEdit->text().toDouble(&ok2);
+        double r = m_arcRadiusEdit->text().toDouble(&ok3);
+        double sa = m_arcStartAngleEdit->text().toDouble(&ok4);
+        double ea = m_arcEndAngleEdit->text().toDouble(&ok5);
+        if (!ok1 || !ok2 || !ok3 || !ok4 || !ok5 || r <= 0) return;
+        double saRad = sa * M_PI / 180.0;
+        double eaRad = ea * M_PI / 180.0;
+        m_scene->addArcSegment({cx, cy}, r, saRad, eaRad, m_arcClockwiseCheck->isChecked());
+    }
+    m_scene->updateScene();
+    updateSegmentManagementPanel();
+    // Pilih segmen terakhir
+    int lastIdx = (int)m_scene->getSegmentCount() - 1;
+    if (lastIdx >= 0) m_segmentSelectCombo->setCurrentIndex(lastIdx);
+}
+
+void MainWindow::onInsertSegmentClicked() {
+    int pos = m_insertPositionSpinBox->value();
+    size_t count = m_scene->getSegmentCount();
+    if (pos < 0 || pos > (int)count) return;
+    if (m_segmentTypeCombo->currentIndex() == 0) { // Line
+        bool ok1, ok2, ok3, ok4;
+        double x1 = m_lineStartXEdit->text().toDouble(&ok1);
+        double y1 = m_lineStartYEdit->text().toDouble(&ok2);
+        double x2 = m_lineEndXEdit->text().toDouble(&ok3);
+        double y2 = m_lineEndYEdit->text().toDouble(&ok4);
+        if (!ok1 || !ok2 || !ok3 || !ok4) return;
+        if (geometry::Point2D(x1, y1).isEqual(geometry::Point2D(x2, y2), 1e-6)) return;
+        auto seg = contour::createLineSegment({x1, y1}, {x2, y2});
+        m_scene->getContour().insertSegment(pos, std::move(seg));
+    } else { // Arc
+        bool ok1, ok2, ok3, ok4, ok5;
+        double cx = m_arcCenterXEdit->text().toDouble(&ok1);
+        double cy = m_arcCenterYEdit->text().toDouble(&ok2);
+        double r = m_arcRadiusEdit->text().toDouble(&ok3);
+        double sa = m_arcStartAngleEdit->text().toDouble(&ok4);
+        double ea = m_arcEndAngleEdit->text().toDouble(&ok5);
+        if (!ok1 || !ok2 || !ok3 || !ok4 || !ok5 || r <= 0) return;
+        double saRad = sa * M_PI / 180.0;
+        double eaRad = ea * M_PI / 180.0;
+        auto seg = contour::createArcSegment({cx, cy}, r, saRad, eaRad, m_arcClockwiseCheck->isChecked());
+        m_scene->getContour().insertSegment(pos, std::move(seg));
+    }
+    m_scene->updateScene();
+    updateSegmentManagementPanel();
+    // Pilih segmen yang baru diinsert
+    m_segmentSelectCombo->setCurrentIndex(pos);
+}
+
+void MainWindow::onRemoveSegmentClicked() {
+    int pos = m_insertPositionSpinBox->value();
+    size_t count = m_scene->getSegmentCount();
+    if (count == 0 || pos < 0 || pos >= (int)count) return;
+    m_scene->getContour().removeSegment(pos);
+    m_scene->updateScene();
+    updateSegmentManagementPanel();
+    // Pilih segmen terdekat
+    int sel = pos;
+    if (sel >= (int)m_scene->getSegmentCount()) sel = (int)m_scene->getSegmentCount() - 1;
+    if (sel >= 0) m_segmentSelectCombo->setCurrentIndex(sel);
 } 

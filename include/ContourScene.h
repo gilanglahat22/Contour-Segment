@@ -78,11 +78,15 @@ public:
     
     // Getter methods
     const contour::Contour& getContour() const { return m_contour; }
+    contour::Contour& getContour() { return m_contour; }
     size_t getSegmentCount() const { return m_contour.size(); }
     
     // Signal emission control
     void setSignalEmissionEnabled(bool enabled) { m_isEmittingSignals = enabled; }
     bool isSignalEmissionEnabled() const { return m_isEmittingSignals; }
+    
+    // Scene update method
+    void updateScene();
 
 signals:
     void contourModified();
@@ -96,7 +100,6 @@ protected:
     void drawBackground(QPainter* painter, const QRectF& rect) override;
 
 private:
-    void updateScene();
     void createSegmentItem(const contour::Segment& segment, size_t segmentIndex);
     QPointF snapToGrid(const QPointF& point) const;
     void cleanupPreviewItem();
